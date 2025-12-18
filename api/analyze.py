@@ -2,12 +2,21 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
 
 # Конфигурация Gemini
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
+
+# Настройки безопасности - разрешаем юридический контент
+SAFETY_SETTINGS = {
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+}
 
 
 def build_system_prompt(rates_info: str) -> str:
@@ -61,6 +70,22 @@ def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comm
     return "\n".join(prompt_parts)
 
 
+def get_response_text(response):
+    """Безопасное получение текста из ответа Gemini"""
+    try:
+        return response.text
+    except ValueError:
+        # Если response.text недоступен, пробуем получить из candidates
+        if response.candidates:
+            candidate = response.candidates[0]
+            if candidate.content and candidate.content.parts:
+                return candidate.content.parts[0].text
+        # Проверяем причину блокировки
+        if response.prompt_feedback:
+            return f"Запрос заблокирован: {response.prompt_feedback}"
+        return "Не удалось получить ответ от AI"
+
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
@@ -107,7 +132,7 @@ class handler(BaseHTTPRequestHandler):
 
             # Вызов Gemini API - модель Gemini 3 Pro Preview
             model = genai.GenerativeModel(
-                model_name="gemini-3-pro-preview",
+                model_name="gemini-2.5-flash-preview-05-20",
                 system_instruction=system_prompt
             )
 
@@ -116,10 +141,11 @@ class handler(BaseHTTPRequestHandler):
                 generation_config=genai.GenerationConfig(
                     temperature=0.7,
                     max_output_tokens=8192,
-                )
+                ),
+                safety_settings=SAFETY_SETTINGS
             )
 
-            objection_text = response.text
+            objection_text = get_response_text(response)
 
             # Формируем краткий анализ
             summary_prompt = f"""На основе следующего текста возражений дай краткое резюме (3-5 предложений) основных аргументов:
@@ -133,10 +159,11 @@ class handler(BaseHTTPRequestHandler):
                 generation_config=genai.GenerationConfig(
                     temperature=0.3,
                     max_output_tokens=500,
-                )
+                ),
+                safety_settings=SAFETY_SETTINGS
             )
 
-            analysis_summary = summary_response.text
+            analysis_summary = get_response_text(summary_response)
 
             # Отправляем ответ
             self.send_response(200)

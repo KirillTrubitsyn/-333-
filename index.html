@@ -596,9 +596,9 @@
 
                 <!-- Ставки ЦБ -->
                 <div class="rates-info">
-                    <h4>📊 Актуальные ставки ЦБ РФ</h4>
+                    <h4>📊 Ключевая ставка ЦБ РФ</h4>
                     <div id="ratesContainer" class="rates-list">
-                        <div style="color: #8899A6;">Загрузка ставок...</div>
+                        <div style="color: #8899A6;">Загрузка...</div>
                     </div>
                 </div>
 
@@ -647,6 +647,7 @@
     <script>
         // Глобальная переменная для хранения ставок
         let cachedRates = [];
+        let currentRate = null;
 
         // Загрузка ставок ЦБ при старте
         document.addEventListener('DOMContentLoaded', loadRates);
@@ -655,23 +656,26 @@
             try {
                 const response = await fetch('/api/rates');
                 if (response.ok) {
-                    const rates = await response.json();
-                    cachedRates = rates;
+                    const data = await response.json();
+                    cachedRates = data.history || [];
+                    currentRate = data.current;
                     const container = document.getElementById('ratesContainer');
-                    if (rates.length > 0) {
-                        container.innerHTML = rates.slice(-5).reverse().map(r =>
-                            `<div class="rate-item">с ${formatDate(r.date_from)}: <strong>${r.key_rate}%</strong> годовых</div>`
-                        ).join('');
+
+                    if (currentRate) {
+                        container.innerHTML = `
+                            <div style="font-size: 24px; font-weight: 700; color: #1E3A5F;">${currentRate.key_rate}%</div>
+                            <div style="font-size: 12px; color: #8899A6; margin-top: 4px;">с ${formatDate(currentRate.date_from)}</div>
+                        `;
                     } else {
-                        container.innerHTML = '<div style="color: #8899A6;">Ставки недоступны</div>';
+                        container.innerHTML = '<div style="color: #8899A6;">Ставка недоступна</div>';
                     }
                 } else {
                     document.getElementById('ratesContainer').innerHTML =
-                        '<div style="color: #C53030;">Не удалось загрузить ставки</div>';
+                        '<div style="color: #C53030;">Не удалось загрузить ставку</div>';
                 }
             } catch (e) {
                 document.getElementById('ratesContainer').innerHTML =
-                    '<div style="color: #C53030;">Ошибка загрузки ставок</div>';
+                    '<div style="color: #C53030;">Ошибка загрузки ставки</div>';
             }
         }
 
@@ -760,11 +764,14 @@
             copyBtn.style.display = 'none';
 
             try {
-                let ratesInfo = 'Ставки ЦБ недоступны';
-                if (cachedRates.length > 0) {
-                    ratesInfo = cachedRates.slice(-10).map(r =>
-                        `— с ${r.date_from}: ${r.key_rate}% годовых`
-                    ).join('\n');
+                let ratesInfo = 'Ставка ЦБ недоступна';
+                if (currentRate) {
+                    ratesInfo = `Текущая ключевая ставка ЦБ РФ: ${currentRate.key_rate}% годовых (с ${currentRate.date_from})`;
+                    if (cachedRates.length > 1) {
+                        ratesInfo += '\n\nИстория изменений:\n' + cachedRates.slice(-5).map(r =>
+                            `— с ${r.date_from}: ${r.key_rate}% годовых`
+                        ).join('\n');
+                    }
                 }
 
                 const requestBody = {
