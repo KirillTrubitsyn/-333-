@@ -20,8 +20,15 @@ SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
-# Claude setup
-import anthropic
+# Claude setup - lazy import
+anthropic_client = None
+
+def get_anthropic_client():
+    global anthropic_client
+    if anthropic_client is None and ANTHROPIC_API_KEY:
+        import anthropic
+        anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    return anthropic_client
 
 
 def build_system_prompt(rates_info: str) -> str:
@@ -145,7 +152,9 @@ def call_gemini(system_prompt: str, user_prompt: str) -> str:
 
 def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
     """Вызов Claude API"""
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = get_anthropic_client()
+    if not client:
+        raise Exception("Claude API недоступен. Проверьте ANTHROPIC_API_KEY")
 
     message = client.messages.create(
         model=model_id,
