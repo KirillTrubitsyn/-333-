@@ -21,51 +21,56 @@ SAFETY_SETTINGS = {
 
 def build_system_prompt(rates_info: str) -> str:
     """Создать системный промпт для Gemini"""
-    return f"""Ты — опытный российский юрист, специализирующийся на арбитражных спорах и взыскании неустойки по договорным обязательствам.
+    return f"""Ты — опытный российский юрист, специализирующийся на арбитражных спорах и взыскании неустойки.
 
-Твоя задача — на основе предоставленных документов (иска о взыскании неустойки и отзыва ответчика) подготовить ВОЗРАЖЕНИЯ ПРОТИВ ПРИМЕНЕНИЯ СТАТЬИ 333 ГК РФ.
+ТВОЯ ЗАДАЧА: На основе предоставленных документов сформулировать АРГУМЕНТЫ против применения статьи 333 ГК РФ (снижения неустойки).
 
-ВАЖНО:
-1. Анализируй конкретные суммы, даты и обстоятельства из предоставленных документов
-2. Используй актуальные ставки ЦБ РФ для расчетов и сравнений
-3. Ссылайся на Постановление Пленума ВС РФ от 24.03.2016 № 7
-4. Указывай на конкретные недостатки в аргументации ответчика
-5. Формируй документ в формате процессуального документа для суда
+ФОРМАТ ОТВЕТА:
+- Сгенерируй 5-8 отдельных аргументов
+- Каждый аргумент должен быть самостоятельным и законченным
+- Аргументы должны быть готовы для копирования в процессуальный документ
+- НЕ используй markdown разметку (**, ##, *** и т.д.)
+- НЕ нумеруй аргументы цифрами с точкой
+- Разделяй аргументы пустой строкой
+- Пиши простым текстом без специальных символов
+
+СТРУКТУРА КАЖДОГО АРГУМЕНТА:
+- Заголовок аргумента (одной строкой, без двоеточия в конце)
+- Пустая строка
+- Текст аргумента (2-4 абзаца)
+- Ссылки на нормы права и судебную практику
+
+ИСПОЛЬЗУЙ:
+- Постановление Пленума ВС РФ от 24.03.2016 № 7
+- Конкретные обстоятельства из документов
+- Расчеты на основе ставки ЦБ РФ
 
 Актуальные ставки ЦБ РФ:
 {rates_info}
 
-Структура возражений:
-1. Вводная часть (позиция истца)
-2. Правовое обоснование недопустимости снижения неустойки
-3. Анализ соразмерности неустойки (с расчетами на основе ставки ЦБ)
-4. Критика доводов ответчика
-5. Судебная практика
-6. Заключение и просительная часть
-
-Отвечай ТОЛЬКО на русском языке. Формируй полный текст возражений."""
+ВАЖНО: Пиши БЕЗ markdown, БЕЗ звездочек, БЕЗ решеток. Только чистый текст."""
 
 
 def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comments: str) -> str:
     """Создать пользовательский промпт"""
     prompt_parts = []
 
-    prompt_parts.append("=== ИСК О ВЗЫСКАНИИ НЕУСТОЙКИ ===")
+    prompt_parts.append("ИСК О ВЗЫСКАНИИ НЕУСТОЙКИ:")
     prompt_parts.append(claim_text)
 
     if response_text and response_text.strip():
-        prompt_parts.append("\n\n=== ОТЗЫВ ОТВЕТЧИКА (ХОДАТАЙСТВО О СНИЖЕНИИ НЕУСТОЙКИ) ===")
+        prompt_parts.append("\n\nОТЗЫВ ОТВЕТЧИКА (ХОДАТАЙСТВО О СНИЖЕНИИ НЕУСТОЙКИ):")
         prompt_parts.append(response_text)
 
     if other_docs and other_docs.strip():
-        prompt_parts.append("\n\n=== ДОПОЛНИТЕЛЬНЫЕ ДОКУМЕНТЫ ===")
+        prompt_parts.append("\n\nДОПОЛНИТЕЛЬНЫЕ ДОКУМЕНТЫ:")
         prompt_parts.append(other_docs)
 
     if comments and comments.strip():
-        prompt_parts.append("\n\n=== ПОЯСНЕНИЯ И КОММЕНТАРИИ ПОЛЬЗОВАТЕЛЯ ===")
+        prompt_parts.append("\n\nПОЯСНЕНИЯ ПОЛЬЗОВАТЕЛЯ:")
         prompt_parts.append(comments)
 
-    prompt_parts.append("\n\nНа основе этих документов подготовь ВОЗРАЖЕНИЯ против применения ст. 333 ГК РФ и снижения неустойки.")
+    prompt_parts.append("\n\nСформулируй аргументы против применения ст. 333 ГК РФ. Помни: без markdown, без звездочек, без нумерации.")
 
     return "\n".join(prompt_parts)
 
@@ -73,14 +78,17 @@ def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comm
 def get_response_text(response):
     """Безопасное получение текста из ответа Gemini"""
     try:
-        return response.text
+        text = response.text
+        # Убираем возможные остатки markdown
+        text = text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
+        return text
     except ValueError:
-        # Если response.text недоступен, пробуем получить из candidates
         if response.candidates:
             candidate = response.candidates[0]
             if candidate.content and candidate.content.parts:
-                return candidate.content.parts[0].text
-        # Проверяем причину блокировки
+                text = candidate.content.parts[0].text
+                text = text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
+                return text
         if response.prompt_feedback:
             return f"Запрос заблокирован: {response.prompt_feedback}"
         return "Не удалось получить ответ от AI"
@@ -89,7 +97,6 @@ def get_response_text(response):
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            # Проверяем API ключ
             if not GEMINI_API_KEY:
                 self.send_response(503)
                 self.send_header('Content-Type', 'application/json')
@@ -100,7 +107,6 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
-            # Читаем тело запроса
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
@@ -121,7 +127,6 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
-            # Формируем промпты
             system_prompt = build_system_prompt(rates_info)
             user_prompt = build_user_prompt(
                 claim_text,
@@ -130,7 +135,6 @@ class handler(BaseHTTPRequestHandler):
                 user_comments
             )
 
-            # Вызов Gemini API
             model = genai.GenerativeModel(
                 model_name="gemini-2.0-flash",
                 system_instruction=system_prompt
@@ -145,34 +149,31 @@ class handler(BaseHTTPRequestHandler):
                 safety_settings=SAFETY_SETTINGS
             )
 
-            objection_text = get_response_text(response)
+            arguments_text = get_response_text(response)
 
-            # Формируем краткий анализ
-            summary_prompt = f"""На основе следующего текста возражений дай краткое резюме (3-5 предложений) основных аргументов:
+            # Краткое резюме
+            summary_prompt = f"""Кратко (2-3 предложения) опиши основные аргументы. Без markdown, без звездочек:
 
-{objection_text[:3000]}
-
-Ответь кратко на русском языке."""
+{arguments_text[:2000]}"""
 
             summary_response = model.generate_content(
                 summary_prompt,
                 generation_config=genai.GenerationConfig(
                     temperature=0.3,
-                    max_output_tokens=500,
+                    max_output_tokens=300,
                 ),
                 safety_settings=SAFETY_SETTINGS
             )
 
-            analysis_summary = get_response_text(summary_response)
+            summary = get_response_text(summary_response)
 
-            # Отправляем ответ
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps({
-                "objection_text": objection_text,
-                "analysis_summary": analysis_summary
+                "arguments_text": arguments_text,
+                "summary": summary
             }).encode())
 
         except Exception as e:
