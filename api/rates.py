@@ -12,9 +12,8 @@ def fetch_cbr_rates():
 
     try:
         # API ЦБ РФ для ключевой ставки
-        # Берем данные за последние 2 года
         end_date = datetime.now()
-        start_date = end_date - timedelta(days=730)
+        start_date = end_date - timedelta(days=365)
 
         url = f"https://www.cbr.ru/DailyInfoWebServ/DailyInfo.asmx/KeyRateXML?fromDate={start_date.strftime('%Y-%m-%d')}&ToDate={end_date.strftime('%Y-%m-%d')}"
 
@@ -30,7 +29,7 @@ def fetch_cbr_rates():
             rate_elem = kr.find('Rate')
 
             if date_elem is not None and rate_elem is not None:
-                date_str = date_elem.text.split('T')[0]  # Берем только дату
+                date_str = date_elem.text.split('T')[0]
                 rate = float(rate_elem.text.replace(',', '.'))
                 rates.append({
                     "date_from": date_str,
@@ -41,28 +40,41 @@ def fetch_cbr_rates():
         rates.sort(key=lambda x: x['date_from'])
 
     except Exception as e:
-        # Если API не работает, возвращаем актуальные данные вручную
+        # Fallback - актуальные данные на декабрь 2024
+        # Ключевая ставка ЦБ РФ: 21% с 20.12.2024
         rates = [
-            {"date_from": "2024-07-26", "key_rate": 18.0},
-            {"date_from": "2024-09-16", "key_rate": 19.0},
-            {"date_from": "2024-10-28", "key_rate": 21.0},
             {"date_from": "2024-12-20", "key_rate": 21.0},
         ]
 
     return rates
 
 
+def get_current_rate(rates):
+    """Получить текущую (последнюю) ставку"""
+    if not rates:
+        return {"date_from": "2024-12-20", "key_rate": 21.0}
+
+    # Возвращаем последнюю ставку (самую актуальную)
+    return rates[-1]
+
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
             rates = fetch_cbr_rates()
+            current_rate = get_current_rate(rates)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Cache-Control', 'public, max-age=3600')  # Кэш на 1 час
             self.end_headers()
-            self.wfile.write(json.dumps(rates).encode())
+
+            # Возвращаем текущую ставку и историю
+            self.wfile.write(json.dumps({
+                "current": current_rate,
+                "history": rates
+            }).encode())
 
         except Exception as e:
             self.send_response(500)
@@ -70,7 +82,8 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps({
-                "error": f"Не удалось загрузить ставки ЦБ: {str(e)}"
+                "error": f"Не удалось загрузить ставки ЦБ: {str(e)}",
+                "current": {"date_from": "2024-12-20", "key_rate": 21.0}
             }).encode())
 
     def do_OPTIONS(self):
