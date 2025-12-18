@@ -414,7 +414,7 @@
         <div class="header">
             <h1>AI-анализатор возражений против снижения неустойки</h1>
             <p>Автоматизированная подготовка возражений по ст. 333 ГК РФ на основе анализа документов</p>
-            <span class="ai-badge">Powered by Gemini AI</span>
+            <span class="ai-badge">Powered by Gemini 2.0 Flash</span>
         </div>
 
         <div class="main-content">
@@ -429,15 +429,15 @@
                         <span class="required">*</span>
                     </h3>
                     <div class="input-tabs">
-                        <button class="tab-btn active" onclick="switchTab('claim', 'file')">Загрузить файл</button>
-                        <button class="tab-btn" onclick="switchTab('claim', 'text')">Вставить текст</button>
+                        <button class="tab-btn active" onclick="switchTab('claim', 'file', this)">Загрузить файл</button>
+                        <button class="tab-btn" onclick="switchTab('claim', 'text', this)">Вставить текст</button>
                     </div>
                     <div id="claim-file-tab" class="tab-content active">
                         <div class="file-upload" onclick="document.getElementById('claimFile').click()">
-                            <input type="file" id="claimFile" accept=".txt,.doc,.docx,.pdf,.rtf" onchange="handleFileSelect(this, 'claim')">
+                            <input type="file" id="claimFile" accept=".txt,.rtf" onchange="handleFileSelect(this, 'claim')">
                             <div class="upload-icon">📄</div>
-                            <div class="upload-text">Нажмите для выбора файла или перетащите сюда</div>
-                            <div class="upload-text" style="font-size: 12px; margin-top: 5px;">.txt, .doc, .docx, .rtf</div>
+                            <div class="upload-text">Нажмите для выбора файла</div>
+                            <div class="upload-text" style="font-size: 12px; margin-top: 5px;">.txt, .rtf</div>
                             <div id="claim-file-name" class="file-name"></div>
                         </div>
                     </div>
@@ -455,12 +455,12 @@
                         <span class="optional">(опционально)</span>
                     </h3>
                     <div class="input-tabs">
-                        <button class="tab-btn active" onclick="switchTab('response', 'file')">Загрузить файл</button>
-                        <button class="tab-btn" onclick="switchTab('response', 'text')">Вставить текст</button>
+                        <button class="tab-btn active" onclick="switchTab('response', 'file', this)">Загрузить файл</button>
+                        <button class="tab-btn" onclick="switchTab('response', 'text', this)">Вставить текст</button>
                     </div>
                     <div id="response-file-tab" class="tab-content active">
                         <div class="file-upload" onclick="document.getElementById('responseFile').click()">
-                            <input type="file" id="responseFile" accept=".txt,.doc,.docx,.pdf,.rtf" onchange="handleFileSelect(this, 'response')">
+                            <input type="file" id="responseFile" accept=".txt,.rtf" onchange="handleFileSelect(this, 'response')">
                             <div class="upload-icon">📋</div>
                             <div class="upload-text">Документ с обоснованием снижения неустойки</div>
                             <div id="response-file-name" class="file-name"></div>
@@ -480,12 +480,12 @@
                         <span class="optional">(опционально)</span>
                     </h3>
                     <div class="input-tabs">
-                        <button class="tab-btn active" onclick="switchTab('other', 'file')">Загрузить файл</button>
-                        <button class="tab-btn" onclick="switchTab('other', 'text')">Вставить текст</button>
+                        <button class="tab-btn active" onclick="switchTab('other', 'file', this)">Загрузить файл</button>
+                        <button class="tab-btn" onclick="switchTab('other', 'text', this)">Вставить текст</button>
                     </div>
                     <div id="other-file-tab" class="tab-content active">
                         <div class="file-upload" onclick="document.getElementById('otherFile').click()">
-                            <input type="file" id="otherFile" accept=".txt,.doc,.docx,.pdf,.rtf" onchange="handleFileSelect(this, 'other')">
+                            <input type="file" id="otherFile" accept=".txt,.rtf" onchange="handleFileSelect(this, 'other')">
                             <div class="upload-icon">📎</div>
                             <div class="upload-text">Дополнительные документы по делу</div>
                             <div id="other-file-name" class="file-name"></div>
@@ -557,14 +557,18 @@
     </div>
 
     <script>
+        // Глобальная переменная для хранения ставок
+        let cachedRates = [];
+
         // Загрузка ставок ЦБ при старте
         document.addEventListener('DOMContentLoaded', loadRates);
 
         async function loadRates() {
             try {
-                const response = await fetch('/rates');
+                const response = await fetch('/api/rates');
                 if (response.ok) {
                     const rates = await response.json();
+                    cachedRates = rates;
                     const container = document.getElementById('ratesContainer');
                     if (rates.length > 0) {
                         container.innerHTML = rates.slice(-5).reverse().map(r =>
@@ -588,13 +592,11 @@
             return date.toLocaleDateString('ru-RU');
         }
 
-        function switchTab(docType, tabType) {
+        function switchTab(docType, tabType, btn) {
             // Обновляем кнопки
-            const tabs = document.querySelectorAll(`#${docType}-file-tab, #${docType}-text-tab`);
-            const btns = tabs[0].parentElement.querySelectorAll('.tab-btn');
-
-            btns.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
+            const container = btn.parentElement;
+            container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
 
             // Показываем нужный контент
             document.getElementById(`${docType}-file-tab`).classList.remove('active');
@@ -615,6 +617,15 @@
             }
         }
 
+        async function readFileAsText(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(e);
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+
         async function analyzeDocuments() {
             const analyzeBtn = document.getElementById('analyzeBtn');
             const loading = document.getElementById('loading');
@@ -632,8 +643,28 @@
             const otherText = document.getElementById('otherText').value;
             const userComments = document.getElementById('userComments').value;
 
+            // Получаем текст из файлов или полей
+            let finalClaimText = claimText;
+            let finalResponseText = responseText;
+            let finalOtherText = otherText;
+
+            try {
+                if (claimFile) {
+                    finalClaimText = await readFileAsText(claimFile);
+                }
+                if (responseFile) {
+                    finalResponseText = await readFileAsText(responseFile);
+                }
+                if (otherFile) {
+                    finalOtherText = await readFileAsText(otherFile);
+                }
+            } catch (e) {
+                alert('Ошибка чтения файла. Попробуйте вставить текст вручную.');
+                return;
+            }
+
             // Проверка
-            if (!claimFile && !claimText.trim()) {
+            if (!finalClaimText.trim()) {
                 alert('Пожалуйста, загрузите иск или введите его текст');
                 return;
             }
@@ -647,37 +678,34 @@
             copyBtn.style.display = 'none';
 
             try {
-                const formData = new FormData();
-
-                if (claimFile) {
-                    formData.append('claim_file', claimFile);
-                } else {
-                    formData.append('claim_text', claimText);
+                // Формируем информацию о ставках
+                let ratesInfo = 'Ставки ЦБ недоступны';
+                if (cachedRates.length > 0) {
+                    ratesInfo = cachedRates.slice(-10).map(r =>
+                        `- с ${r.date_from}: ${r.key_rate}% годовых`
+                    ).join('\n');
                 }
 
-                if (responseFile) {
-                    formData.append('response_file', responseFile);
-                } else if (responseText.trim()) {
-                    formData.append('response_text', responseText);
-                }
+                const requestBody = {
+                    claim_text: finalClaimText,
+                    response_text: finalResponseText,
+                    other_documents: finalOtherText,
+                    user_comments: userComments,
+                    rates_info: ratesInfo
+                };
 
-                if (otherFile) {
-                    formData.append('other_file', otherFile);
-                } else if (otherText.trim()) {
-                    formData.append('other_text', otherText);
-                }
-
-                formData.append('user_comments', userComments);
-
-                const response = await fetch('/analyze-files', {
+                const response = await fetch('/api/analyze', {
                     method: 'POST',
-                    body: formData
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
                 });
 
                 const result = await response.json();
 
                 if (!response.ok) {
-                    throw new Error(result.detail || 'Ошибка анализа');
+                    throw new Error(result.error || 'Ошибка анализа');
                 }
 
                 // Показываем результат
