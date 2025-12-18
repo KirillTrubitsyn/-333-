@@ -372,7 +372,7 @@
 
                 <div id="actionButtons" class="action-buttons" style="display: none;">
                     <button class="btn btn-primary" onclick="copyToClipboard()">📋 Копировать</button>
-                    <button class="btn btn-success" onclick="downloadDocx()">📥 Скачать DOCX</button>
+                    <button class="btn btn-success" onclick="downloadDocx()">📥 Скачать RTF</button>
                 </div>
             </div>
         </div>
@@ -562,21 +562,29 @@
         }
 
         function downloadDocx() {
-            const content = lastResult;
-            const blob = new Blob([content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+            // Создаем простой RTF (совместим с Word)
+            const rtfContent = `{\\rtf1\\ansi\\ansicpg1251\\deff0
+{\\fonttbl{\\f0\\fnil\\fcharset204 Arial;}}
+{\\colortbl;\\red0\\green0\\blue0;}
+\\viewkind4\\uc1\\pard\\f0\\fs24
+${lastResult.replace(/\n/g, '\\par\n').replace(/"/g, '\\"')}
+}`;
+            const blob = new Blob([rtfContent], { type: 'application/rtf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'arguments_333.txt';
+            a.download = 'arguments_333.rtf';
             a.click();
             URL.revokeObjectURL(url);
         }
 
-        function saveToHistory(preview, fullText) {
+        function saveToHistory(inputPreview, fullText) {
             const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
+            // Сохраняем превью из РЕЗУЛЬТАТА, а не из входных данных
+            const resultPreview = fullText.substring(0, 100).replace(/[\r\n]+/g, ' ');
             history.unshift({
                 date: new Date().toISOString(),
-                preview: preview,
+                preview: resultPreview,
                 text: fullText
             });
             if (history.length > 10) history.pop();
