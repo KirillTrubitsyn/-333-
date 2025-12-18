@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #D4A5A5 0%, #C9A9A6 50%, #E8C4C4 100%);
+            background: linear-gradient(145deg, #E8EEF2 0%, #D4DEE7 50%, #C5D3E0 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -21,36 +21,52 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: #FDF8F8;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(139, 90, 90, 0.25);
+            background: #FAFBFC;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(30, 58, 95, 0.15);
             overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #8B5A5A 0%, #A67C7C 100%);
+            background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%);
             color: white;
-            padding: 30px;
+            padding: 35px 30px;
             text-align: center;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #C9A227, #E8C547, #C9A227);
         }
 
         .header h1 {
             font-size: 26px;
             margin-bottom: 10px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
         .header p {
             font-size: 14px;
-            opacity: 0.9;
+            opacity: 0.85;
+            font-weight: 300;
         }
 
         .header .ai-badge {
             display: inline-block;
-            background: linear-gradient(135deg, #B76E79 0%, #D4A5A5 100%);
-            padding: 4px 12px;
+            background: linear-gradient(135deg, #C9A227 0%, #E8C547 100%);
+            color: #1E3A5F;
+            padding: 5px 14px;
             border-radius: 20px;
             font-size: 12px;
-            margin-top: 10px;
+            font-weight: 600;
+            margin-top: 12px;
         }
 
         .main-content {
@@ -62,15 +78,15 @@
 
         .form-section {
             padding: 30px;
-            background: #F5EBEB;
-            border-right: 1px solid #E0D0D0;
+            background: #F4F7F9;
+            border-right: 1px solid #E1E8ED;
             overflow-y: auto;
             max-height: 85vh;
         }
 
         .output-section {
             padding: 30px;
-            background: #FDF8F8;
+            background: #FAFBFC;
             overflow-y: auto;
             max-height: 85vh;
         }
@@ -78,24 +94,41 @@
         .section-title {
             font-size: 18px;
             font-weight: 600;
-            color: #8B5A5A;
+            color: #1E3A5F;
             margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #B76E79;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #C9A227;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #C9A227;
+            border-radius: 2px;
         }
 
         .document-block {
             background: white;
-            border: 1px solid #E0D0D0;
-            border-radius: 8px;
+            border: 1px solid #E1E8ED;
+            border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(30, 58, 95, 0.04);
+            transition: box-shadow 0.3s;
+        }
+
+        .document-block:hover {
+            box-shadow: 0 4px 16px rgba(30, 58, 95, 0.08);
         }
 
         .document-block h3 {
             font-size: 15px;
             font-weight: 600;
-            color: #8B5A5A;
+            color: #1E3A5F;
             margin-bottom: 15px;
             display: flex;
             align-items: center;
@@ -103,13 +136,14 @@
         }
 
         .document-block h3 .required {
-            color: #B76E79;
+            color: #C9A227;
+            font-weight: 700;
         }
 
         .document-block h3 .optional {
             font-weight: 400;
             font-size: 12px;
-            color: #A89999;
+            color: #8899A6;
         }
 
         .input-tabs {
@@ -120,23 +154,24 @@
 
         .tab-btn {
             padding: 8px 16px;
-            border: 1px solid #E0D0D0;
-            background: #F5EBEB;
+            border: 1px solid #E1E8ED;
+            background: #F4F7F9;
             border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
             transition: all 0.3s;
-            color: #8B5A5A;
+            color: #4A5568;
         }
 
         .tab-btn.active {
-            background: linear-gradient(135deg, #B76E79 0%, #C9A9A6 100%);
+            background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%);
             color: white;
-            border-color: #B76E79;
+            border-color: #1E3A5F;
         }
 
         .tab-btn:hover:not(.active) {
-            background: #EDE3E3;
+            background: #E8EEF2;
+            border-color: #CBD5E0;
         }
 
         .tab-content {
@@ -148,23 +183,23 @@
         }
 
         .file-upload {
-            border: 2px dashed #D4A5A5;
-            border-radius: 8px;
+            border: 2px dashed #CBD5E0;
+            border-radius: 10px;
             padding: 30px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
-            background: #FDF8F8;
+            background: #FAFBFC;
         }
 
         .file-upload:hover {
-            border-color: #B76E79;
-            background: #F5EBEB;
+            border-color: #C9A227;
+            background: #FFFDF5;
         }
 
         .file-upload.has-file {
-            border-color: #7D9E7D;
-            background: #F0F5F0;
+            border-color: #48BB78;
+            background: #F0FFF4;
         }
 
         .file-upload input[type="file"] {
@@ -178,42 +213,43 @@
 
         .file-upload .upload-text {
             font-size: 14px;
-            color: #A89999;
+            color: #8899A6;
         }
 
         .file-upload .file-name {
             font-size: 14px;
-            color: #7D9E7D;
+            color: #48BB78;
             font-weight: 600;
             margin-top: 10px;
         }
 
         .form-group textarea {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #E0D0D0;
-            border-radius: 6px;
+            padding: 14px;
+            border: 1px solid #E1E8ED;
+            border-radius: 8px;
             font-size: 14px;
             font-family: inherit;
             resize: vertical;
             min-height: 150px;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, box-shadow 0.3s;
             background: white;
         }
 
         .form-group textarea:focus {
             outline: none;
-            border-color: #B76E79;
+            border-color: #C9A227;
+            box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.1);
         }
 
         .form-group textarea::placeholder {
-            color: #C4B5B5;
+            color: #A0AEC0;
         }
 
         .comments-block {
-            background: #FFF5E6;
-            border: 1px solid #E6C89C;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #FFFDF5 0%, #FFF9E6 100%);
+            border: 1px solid #E8D9A0;
+            border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
         }
@@ -221,33 +257,39 @@
         .comments-block h3 {
             font-size: 15px;
             font-weight: 600;
-            color: #B8860B;
+            color: #8B7000;
             margin-bottom: 15px;
         }
 
         .rates-info {
-            background: #F0E6E6;
-            border: 1px solid #D4A5A5;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #F0F5FF 0%, #E8EEF8 100%);
+            border: 1px solid #C3D4E8;
+            border-radius: 10px;
             padding: 15px;
             margin-bottom: 20px;
         }
 
         .rates-info h4 {
             font-size: 14px;
-            color: #8B5A5A;
+            color: #1E3A5F;
             margin-bottom: 10px;
+            font-weight: 600;
         }
 
         .rates-list {
             font-size: 13px;
-            color: #A67C7C;
+            color: #4A5568;
             max-height: 100px;
             overflow-y: auto;
         }
 
         .rates-list .rate-item {
-            padding: 3px 0;
+            padding: 4px 0;
+            border-bottom: 1px solid #E1E8ED;
+        }
+
+        .rates-list .rate-item:last-child {
+            border-bottom: none;
         }
 
         .button-group {
@@ -259,7 +301,7 @@
         .btn {
             padding: 14px 28px;
             border: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 15px;
             font-weight: 600;
             cursor: pointer;
@@ -268,13 +310,37 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #B76E79 0%, #C9A9A6 100%);
+            background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%);
             color: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #C9A227 0%, #E8C547 100%);
+            transition: left 0.3s;
+            z-index: 0;
+        }
+
+        .btn-primary:hover::before {
+            left: 0;
+        }
+
+        .btn-primary span {
+            position: relative;
+            z-index: 1;
         }
 
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(183, 110, 121, 0.4);
+            box-shadow: 0 8px 20px rgba(30, 58, 95, 0.25);
+            color: #1E3A5F;
         }
 
         .btn-primary:disabled {
@@ -283,73 +349,77 @@
         }
 
         .btn-secondary {
-            background: #EDE3E3;
-            color: #8B5A5A;
+            background: #E8EEF2;
+            color: #4A5568;
+            border: 1px solid #CBD5E0;
         }
 
         .btn-secondary:hover {
-            background: #E0D0D0;
+            background: #D4DEE7;
         }
 
         .output-box {
-            background: #FDF8F8;
-            border: 1px solid #E0D0D0;
-            border-radius: 6px;
-            padding: 20px;
+            background: white;
+            border: 1px solid #E1E8ED;
+            border-radius: 10px;
+            padding: 24px;
             min-height: 400px;
             font-size: 14px;
             line-height: 1.8;
-            color: #5A4A4A;
+            color: #2D3748;
             white-space: pre-wrap;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
         }
 
         .output-empty {
-            color: #A89999;
+            color: #A0AEC0;
             font-style: italic;
             text-align: center;
             padding-top: 100px;
         }
 
         .summary-box {
-            background: #F0F5F0;
-            border: 1px solid #7D9E7D;
-            border-radius: 6px;
-            padding: 15px;
+            background: linear-gradient(135deg, #F0FFF4 0%, #E6FFED 100%);
+            border: 1px solid #9AE6B4;
+            border-radius: 10px;
+            padding: 16px;
             margin-bottom: 20px;
         }
 
         .summary-box h4 {
             font-size: 14px;
-            color: #5A7A5A;
+            color: #276749;
             margin-bottom: 10px;
+            font-weight: 600;
         }
 
         .summary-box p {
             font-size: 13px;
-            color: #6B8B6B;
+            color: #2F855A;
             line-height: 1.6;
         }
 
         .copy-btn {
             margin-top: 15px;
             width: 100%;
-            background: #7D9E7D;
+            background: linear-gradient(135deg, #48BB78 0%, #38A169 100%);
             color: white;
         }
 
         .copy-btn:hover {
-            background: #6B8B6B;
+            background: linear-gradient(135deg, #38A169 0%, #2F855A 100%);
+            transform: translateY(-1px);
         }
 
         .copy-btn.copied {
-            background: #8BAF8B;
+            background: linear-gradient(135deg, #68D391 0%, #48BB78 100%);
         }
 
         .loading {
             display: none;
             text-align: center;
-            padding: 40px;
+            padding: 50px;
         }
 
         .loading.active {
@@ -359,8 +429,8 @@
         .spinner {
             width: 50px;
             height: 50px;
-            border: 4px solid #F5EBEB;
-            border-top: 4px solid #B76E79;
+            border: 3px solid #E1E8ED;
+            border-top: 3px solid #C9A227;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
@@ -372,16 +442,16 @@
         }
 
         .loading-text {
-            color: #A89999;
+            color: #4A5568;
             font-size: 14px;
         }
 
         .error-box {
-            background: #FDE8E8;
-            border: 1px solid #E8B4B4;
-            border-radius: 6px;
-            padding: 15px;
-            color: #8B4A4A;
+            background: linear-gradient(135deg, #FFF5F5 0%, #FED7D7 100%);
+            border: 1px solid #FC8181;
+            border-radius: 10px;
+            padding: 16px;
+            color: #C53030;
             margin-bottom: 20px;
             display: none;
         }
@@ -391,20 +461,15 @@
         }
 
         .footer {
-            background: #F5EBEB;
-            padding: 15px;
+            background: #F4F7F9;
+            padding: 16px;
             text-align: center;
-            border-top: 1px solid #E0D0D0;
+            border-top: 1px solid #E1E8ED;
         }
 
         .footer .author {
             font-size: 12px;
-            color: #A89999;
-        }
-
-        .footer .author a {
-            color: #B76E79;
-            text-decoration: none;
+            color: #8899A6;
         }
 
         @media (max-width: 968px) {
@@ -414,7 +479,7 @@
 
             .form-section {
                 border-right: none;
-                border-bottom: 1px solid #E0D0D0;
+                border-bottom: 1px solid #E1E8ED;
                 max-height: none;
             }
 
@@ -522,10 +587,10 @@
                     <h3>💬 Пояснения и комментарии</h3>
                     <div class="form-group">
                         <textarea id="userComments" placeholder="Укажите дополнительную информацию, которую следует учесть при подготовке возражений:
-- особые обстоятельства дела
-- важные факты, не отраженные в документах
-- акценты, которые нужно сделать
-- любые пожелания по содержанию возражений" style="min-height: 120px;"></textarea>
+— особые обстоятельства дела
+— важные факты, не отраженные в документах
+— акценты, которые нужно сделать
+— любые пожелания по содержанию возражений" style="min-height: 120px;"></textarea>
                     </div>
                 </div>
 
@@ -533,13 +598,13 @@
                 <div class="rates-info">
                     <h4>📊 Актуальные ставки ЦБ РФ</h4>
                     <div id="ratesContainer" class="rates-list">
-                        <div style="color: #A89999;">Загрузка ставок...</div>
+                        <div style="color: #8899A6;">Загрузка ставок...</div>
                     </div>
                 </div>
 
                 <div class="button-group">
                     <button id="analyzeBtn" class="btn btn-primary" onclick="analyzeDocuments()">
-                        🤖 Сгенерировать возражения
+                        <span>🤖 Сгенерировать возражения</span>
                     </button>
                     <button class="btn btn-secondary" onclick="clearForm()">
                         🔄 Очистить
@@ -556,7 +621,7 @@
                 <div id="loading" class="loading">
                     <div class="spinner"></div>
                     <div class="loading-text">AI анализирует документы и готовит возражения...</div>
-                    <div class="loading-text" style="font-size: 12px; margin-top: 10px;">Это может занять 30-60 секунд</div>
+                    <div class="loading-text" style="font-size: 12px; margin-top: 10px; opacity: 0.7;">Это может занять 30-60 секунд</div>
                 </div>
 
                 <div id="summaryBox" class="summary-box" style="display: none;">
@@ -565,7 +630,7 @@
                 </div>
 
                 <div id="output" class="output-box output-empty">
-                    Загрузите документы и нажмите "Сгенерировать возражения" для получения текста процессуального документа на основе AI-анализа.
+                    Загрузите документы и нажмите «Сгенерировать возражения» для получения текста процессуального документа на основе AI-анализа.
                 </div>
 
                 <button id="copyBtn" class="btn copy-btn" onclick="copyToClipboard()" style="display: none;">
@@ -598,15 +663,15 @@
                             `<div class="rate-item">с ${formatDate(r.date_from)}: <strong>${r.key_rate}%</strong> годовых</div>`
                         ).join('');
                     } else {
-                        container.innerHTML = '<div style="color: #A89999;">Ставки недоступны</div>';
+                        container.innerHTML = '<div style="color: #8899A6;">Ставки недоступны</div>';
                     }
                 } else {
                     document.getElementById('ratesContainer').innerHTML =
-                        '<div style="color: #B76E79;">Не удалось загрузить ставки</div>';
+                        '<div style="color: #C53030;">Не удалось загрузить ставки</div>';
                 }
             } catch (e) {
                 document.getElementById('ratesContainer').innerHTML =
-                    '<div style="color: #B76E79;">Ошибка загрузки ставок</div>';
+                    '<div style="color: #C53030;">Ошибка загрузки ставок</div>';
             }
         }
 
@@ -616,12 +681,10 @@
         }
 
         function switchTab(docType, tabType, btn) {
-            // Обновляем кнопки
             const container = btn.parentElement;
             container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
 
-            // Показываем нужный контент
             document.getElementById(`${docType}-file-tab`).classList.remove('active');
             document.getElementById(`${docType}-text-tab`).classList.remove('active');
             document.getElementById(`${docType}-${tabType}-tab`).classList.add('active');
@@ -657,7 +720,6 @@
             const errorBox = document.getElementById('errorBox');
             const copyBtn = document.getElementById('copyBtn');
 
-            // Собираем данные
             const claimFile = document.getElementById('claimFile').files[0];
             const claimText = document.getElementById('claimText').value;
             const responseFile = document.getElementById('responseFile').files[0];
@@ -666,7 +728,6 @@
             const otherText = document.getElementById('otherText').value;
             const userComments = document.getElementById('userComments').value;
 
-            // Получаем текст из файлов или полей
             let finalClaimText = claimText;
             let finalResponseText = responseText;
             let finalOtherText = otherText;
@@ -686,13 +747,11 @@
                 return;
             }
 
-            // Проверка
             if (!finalClaimText.trim()) {
                 alert('Пожалуйста, загрузите иск или введите его текст');
                 return;
             }
 
-            // UI состояние загрузки
             analyzeBtn.disabled = true;
             loading.classList.add('active');
             output.style.display = 'none';
@@ -701,11 +760,10 @@
             copyBtn.style.display = 'none';
 
             try {
-                // Формируем информацию о ставках
                 let ratesInfo = 'Ставки ЦБ недоступны';
                 if (cachedRates.length > 0) {
                     ratesInfo = cachedRates.slice(-10).map(r =>
-                        `- с ${r.date_from}: ${r.key_rate}% годовых`
+                        `— с ${r.date_from}: ${r.key_rate}% годовых`
                     ).join('\n');
                 }
 
@@ -731,7 +789,6 @@
                     throw new Error(result.error || 'Ошибка анализа');
                 }
 
-                // Показываем результат
                 output.textContent = result.objection_text;
                 output.classList.remove('output-empty');
                 output.style.display = 'block';
@@ -743,7 +800,6 @@
 
                 copyBtn.style.display = 'block';
 
-                // Прокрутка к результату на мобильных
                 if (window.innerWidth <= 968) {
                     output.scrollIntoView({ behavior: 'smooth' });
                 }
@@ -761,25 +817,21 @@
         function clearForm() {
             if (!confirm('Очистить все поля формы?')) return;
 
-            // Очищаем файлы
             ['claimFile', 'responseFile', 'otherFile'].forEach(id => {
                 document.getElementById(id).value = '';
             });
 
-            // Очищаем имена файлов
             ['claim', 'response', 'other'].forEach(type => {
                 document.getElementById(`${type}-file-name`).textContent = '';
                 document.querySelector(`#${type}-file-tab .file-upload`).classList.remove('has-file');
             });
 
-            // Очищаем текстовые поля
             ['claimText', 'responseText', 'otherText', 'userComments'].forEach(id => {
                 document.getElementById(id).value = '';
             });
 
-            // Сбрасываем вывод
             const output = document.getElementById('output');
-            output.textContent = 'Загрузите документы и нажмите "Сгенерировать возражения" для получения текста процессуального документа на основе AI-анализа.';
+            output.textContent = 'Загрузите документы и нажмите «Сгенерировать возражения» для получения текста процессуального документа на основе AI-анализа.';
             output.classList.add('output-empty');
 
             document.getElementById('summaryBox').style.display = 'none';
