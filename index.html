@@ -13,7 +13,7 @@
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #D4A5A5 0%, #C9A9A6 50%, #E8C4C4 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -21,14 +21,14 @@
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: white;
+            background: #FDF8F8;
             border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(139, 90, 90, 0.25);
             overflow: hidden;
         }
 
         .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            background: linear-gradient(135deg, #8B5A5A 0%, #A67C7C 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -46,7 +46,7 @@
 
         .header .ai-badge {
             display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #B76E79 0%, #D4A5A5 100%);
             padding: 4px 12px;
             border-radius: 20px;
             font-size: 12px;
@@ -62,15 +62,15 @@
 
         .form-section {
             padding: 30px;
-            background: #f8f9fa;
-            border-right: 1px solid #dee2e6;
+            background: #F5EBEB;
+            border-right: 1px solid #E0D0D0;
             overflow-y: auto;
             max-height: 85vh;
         }
 
         .output-section {
             padding: 30px;
-            background: white;
+            background: #FDF8F8;
             overflow-y: auto;
             max-height: 85vh;
         }
@@ -78,15 +78,15 @@
         .section-title {
             font-size: 18px;
             font-weight: 600;
-            color: #2c3e50;
+            color: #8B5A5A;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 2px solid #B76E79;
         }
 
         .document-block {
             background: white;
-            border: 1px solid #dee2e6;
+            border: 1px solid #E0D0D0;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
@@ -95,7 +95,7 @@
         .document-block h3 {
             font-size: 15px;
             font-weight: 600;
-            color: #2c3e50;
+            color: #8B5A5A;
             margin-bottom: 15px;
             display: flex;
             align-items: center;
@@ -103,13 +103,13 @@
         }
 
         .document-block h3 .required {
-            color: #e74c3c;
+            color: #B76E79;
         }
 
         .document-block h3 .optional {
             font-weight: 400;
             font-size: 12px;
-            color: #95a5a6;
+            color: #A89999;
         }
 
         .input-tabs {
@@ -120,22 +120,23 @@
 
         .tab-btn {
             padding: 8px 16px;
-            border: 1px solid #dee2e6;
-            background: #f8f9fa;
+            border: 1px solid #E0D0D0;
+            background: #F5EBEB;
             border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
             transition: all 0.3s;
+            color: #8B5A5A;
         }
 
         .tab-btn.active {
-            background: #667eea;
+            background: linear-gradient(135deg, #B76E79 0%, #C9A9A6 100%);
             color: white;
-            border-color: #667eea;
+            border-color: #B76E79;
         }
 
         .tab-btn:hover:not(.active) {
-            background: #e9ecef;
+            background: #EDE3E3;
         }
 
         .tab-content {
@@ -147,23 +148,23 @@
         }
 
         .file-upload {
-            border: 2px dashed #cbd5e0;
+            border: 2px dashed #D4A5A5;
             border-radius: 8px;
             padding: 30px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s;
-            background: #fafbfc;
+            background: #FDF8F8;
         }
 
         .file-upload:hover {
-            border-color: #667eea;
-            background: #f0f4ff;
+            border-color: #B76E79;
+            background: #F5EBEB;
         }
 
         .file-upload.has-file {
-            border-color: #27ae60;
-            background: #f0fff4;
+            border-color: #7D9E7D;
+            background: #F0F5F0;
         }
 
         .file-upload input[type="file"] {
@@ -177,12 +178,12 @@
 
         .file-upload .upload-text {
             font-size: 14px;
-            color: #7f8c8d;
+            color: #A89999;
         }
 
         .file-upload .file-name {
             font-size: 14px;
-            color: #27ae60;
+            color: #7D9E7D;
             font-weight: 600;
             margin-top: 10px;
         }
@@ -190,27 +191,28 @@
         .form-group textarea {
             width: 100%;
             padding: 12px;
-            border: 1px solid #cbd5e0;
+            border: 1px solid #E0D0D0;
             border-radius: 6px;
             font-size: 14px;
             font-family: inherit;
             resize: vertical;
             min-height: 150px;
             transition: border-color 0.3s;
+            background: white;
         }
 
         .form-group textarea:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #B76E79;
         }
 
         .form-group textarea::placeholder {
-            color: #a0aec0;
+            color: #C4B5B5;
         }
 
         .comments-block {
-            background: #fff8e1;
-            border: 1px solid #ffcc02;
+            background: #FFF5E6;
+            border: 1px solid #E6C89C;
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
@@ -219,13 +221,13 @@
         .comments-block h3 {
             font-size: 15px;
             font-weight: 600;
-            color: #f57c00;
+            color: #B8860B;
             margin-bottom: 15px;
         }
 
         .rates-info {
-            background: #e3f2fd;
-            border: 1px solid #2196f3;
+            background: #F0E6E6;
+            border: 1px solid #D4A5A5;
             border-radius: 8px;
             padding: 15px;
             margin-bottom: 20px;
@@ -233,13 +235,13 @@
 
         .rates-info h4 {
             font-size: 14px;
-            color: #1565c0;
+            color: #8B5A5A;
             margin-bottom: 10px;
         }
 
         .rates-list {
             font-size: 13px;
-            color: #1976d2;
+            color: #A67C7C;
             max-height: 100px;
             overflow-y: auto;
         }
@@ -266,13 +268,13 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #B76E79 0%, #C9A9A6 100%);
             color: white;
         }
 
         .btn-primary:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 5px 15px rgba(183, 110, 121, 0.4);
         }
 
         .btn-primary:disabled {
@@ -281,37 +283,37 @@
         }
 
         .btn-secondary {
-            background: #e9ecef;
-            color: #495057;
+            background: #EDE3E3;
+            color: #8B5A5A;
         }
 
         .btn-secondary:hover {
-            background: #dee2e6;
+            background: #E0D0D0;
         }
 
         .output-box {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
+            background: #FDF8F8;
+            border: 1px solid #E0D0D0;
             border-radius: 6px;
             padding: 20px;
             min-height: 400px;
             font-size: 14px;
             line-height: 1.8;
-            color: #2c3e50;
+            color: #5A4A4A;
             white-space: pre-wrap;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         .output-empty {
-            color: #95a5a6;
+            color: #A89999;
             font-style: italic;
             text-align: center;
             padding-top: 100px;
         }
 
         .summary-box {
-            background: #e8f5e9;
-            border: 1px solid #4caf50;
+            background: #F0F5F0;
+            border: 1px solid #7D9E7D;
             border-radius: 6px;
             padding: 15px;
             margin-bottom: 20px;
@@ -319,29 +321,29 @@
 
         .summary-box h4 {
             font-size: 14px;
-            color: #2e7d32;
+            color: #5A7A5A;
             margin-bottom: 10px;
         }
 
         .summary-box p {
             font-size: 13px;
-            color: #388e3c;
+            color: #6B8B6B;
             line-height: 1.6;
         }
 
         .copy-btn {
             margin-top: 15px;
             width: 100%;
-            background: #27ae60;
+            background: #7D9E7D;
             color: white;
         }
 
         .copy-btn:hover {
-            background: #229954;
+            background: #6B8B6B;
         }
 
         .copy-btn.copied {
-            background: #2ecc71;
+            background: #8BAF8B;
         }
 
         .loading {
@@ -357,8 +359,8 @@
         .spinner {
             width: 50px;
             height: 50px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
+            border: 4px solid #F5EBEB;
+            border-top: 4px solid #B76E79;
             border-radius: 50%;
             animation: spin 1s linear infinite;
             margin: 0 auto 20px;
@@ -370,22 +372,39 @@
         }
 
         .loading-text {
-            color: #7f8c8d;
+            color: #A89999;
             font-size: 14px;
         }
 
         .error-box {
-            background: #fdecea;
-            border: 1px solid #f5c6cb;
+            background: #FDE8E8;
+            border: 1px solid #E8B4B4;
             border-radius: 6px;
             padding: 15px;
-            color: #721c24;
+            color: #8B4A4A;
             margin-bottom: 20px;
             display: none;
         }
 
         .error-box.active {
             display: block;
+        }
+
+        .footer {
+            background: #F5EBEB;
+            padding: 15px;
+            text-align: center;
+            border-top: 1px solid #E0D0D0;
+        }
+
+        .footer .author {
+            font-size: 12px;
+            color: #A89999;
+        }
+
+        .footer .author a {
+            color: #B76E79;
+            text-decoration: none;
         }
 
         @media (max-width: 968px) {
@@ -395,7 +414,7 @@
 
             .form-section {
                 border-right: none;
-                border-bottom: 1px solid #dee2e6;
+                border-bottom: 1px solid #E0D0D0;
                 max-height: none;
             }
 
@@ -514,7 +533,7 @@
                 <div class="rates-info">
                     <h4>📊 Актуальные ставки ЦБ РФ</h4>
                     <div id="ratesContainer" class="rates-list">
-                        <div style="color: #90a4ae;">Загрузка ставок...</div>
+                        <div style="color: #A89999;">Загрузка ставок...</div>
                     </div>
                 </div>
 
@@ -554,6 +573,10 @@
                 </button>
             </div>
         </div>
+
+        <div class="footer">
+            <div class="author">Разработчик: Кирилл Трубицын</div>
+        </div>
     </div>
 
     <script>
@@ -575,15 +598,15 @@
                             `<div class="rate-item">с ${formatDate(r.date_from)}: <strong>${r.key_rate}%</strong> годовых</div>`
                         ).join('');
                     } else {
-                        container.innerHTML = '<div style="color: #90a4ae;">Ставки недоступны</div>';
+                        container.innerHTML = '<div style="color: #A89999;">Ставки недоступны</div>';
                     }
                 } else {
                     document.getElementById('ratesContainer').innerHTML =
-                        '<div style="color: #f57c00;">Не удалось загрузить ставки</div>';
+                        '<div style="color: #B76E79;">Не удалось загрузить ставки</div>';
                 }
             } catch (e) {
                 document.getElementById('ratesContainer').innerHTML =
-                    '<div style="color: #f57c00;">Ошибка загрузки ставок</div>';
+                    '<div style="color: #B76E79;">Ошибка загрузки ставок</div>';
             }
         }
 
