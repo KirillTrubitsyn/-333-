@@ -301,9 +301,9 @@
                     </div>
                     <div id="claim-file-tab" class="tab-content active">
                         <div class="file-upload" onclick="document.getElementById('claimFile').click()">
-                            <input type="file" id="claimFile" accept=".txt,.rtf" onchange="handleFileSelect(this, 'claim')">
+                            <input type="file" id="claimFile" accept=".txt,.rtf,.docx,.doc" onchange="handleFileSelect(this, 'claim')">
                             <div class="upload-icon">📄</div>
-                            <div class="upload-text">Выберите файл (.txt, .rtf)</div>
+                            <div class="upload-text">Выберите файл (.docx, .txt, .rtf)</div>
                             <div id="claim-file-name" class="file-name"></div>
                         </div>
                     </div>
@@ -320,9 +320,9 @@
                     </div>
                     <div id="response-file-tab" class="tab-content active">
                         <div class="file-upload" onclick="document.getElementById('responseFile').click()">
-                            <input type="file" id="responseFile" accept=".txt,.rtf" onchange="handleFileSelect(this, 'response')">
+                            <input type="file" id="responseFile" accept=".txt,.rtf,.docx,.doc" onchange="handleFileSelect(this, 'response')">
                             <div class="upload-icon">📋</div>
-                            <div class="upload-text">Ходатайство о снижении неустойки</div>
+                            <div class="upload-text">Ходатайство о снижении (.docx, .txt)</div>
                             <div id="response-file-name" class="file-name"></div>
                         </div>
                     </div>
@@ -372,7 +372,7 @@
 
                 <div id="actionButtons" class="action-buttons" style="display: none;">
                     <button class="btn btn-primary" onclick="copyToClipboard()">📋 Копировать</button>
-                    <button class="btn btn-success" onclick="downloadDocx()">📥 Скачать RTF</button>
+                    <button class="btn btn-success" onclick="downloadDocx()">📥 Скачать DOCX</button>
                 </div>
             </div>
         </div>
@@ -381,6 +381,11 @@
             <div class="author">Разработчик: Кирилл Трубицын</div>
         </div>
     </div>
+
+    <!-- Библиотеки для работы с DOCX -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <script>
         let cachedRates = [];
@@ -448,6 +453,27 @@
         }
 
         async function readFileAsText(file) {
+            const fileName = file.name.toLowerCase();
+
+            // Для DOCX используем mammoth
+            if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = async (e) => {
+                        try {
+                            const arrayBuffer = e.target.result;
+                            const result = await mammoth.extractRawText({ arrayBuffer });
+                            resolve(result.value);
+                        } catch (err) {
+                            reject(new Error('Ошибка чтения DOCX: ' + err.message));
+                        }
+                    };
+                    reader.onerror = (e) => reject(e);
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            // Для TXT и RTF читаем как текст
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => resolve(e.target.result);
@@ -561,21 +587,55 @@
             });
         }
 
-        function downloadDocx() {
-            // Создаем простой RTF (совместим с Word)
-            const rtfContent = `{\\rtf1\\ansi\\ansicpg1251\\deff0
-{\\fonttbl{\\f0\\fnil\\fcharset204 Arial;}}
-{\\colortbl;\\red0\\green0\\blue0;}
-\\viewkind4\\uc1\\pard\\f0\\fs24
-${lastResult.replace(/\n/g, '\\par\n').replace(/"/g, '\\"')}
-}`;
-            const blob = new Blob([rtfContent], { type: 'application/rtf' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'arguments_333.rtf';
-            a.click();
-            URL.revokeObjectURL(url);
+        async function downloadDocx() {
+            const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+
+            // Парсим текст в параграфы
+            const lines = lastResult.split('\n');
+            const children = [];
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) {
+                    children.push(new Paragraph({ text: '' }));
+                    continue;
+                }
+
+                // Определяем тип строки
+                const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
+                const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
+
+                if (isMainHeading) {
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a3a6e" })],
+                        spacing: { before: 360, after: 180 },
+                        alignment: AlignmentType.LEFT
+                    }));
+                } else if (isSubHeading) {
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a3a6e" })],
+                        spacing: { before: 240, after: 120 }
+                    }));
+                } else {
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: trimmed, size: 24 })],
+                        spacing: { after: 120 },
+                        alignment: AlignmentType.JUSTIFIED
+                    }));
+                }
+            }
+
+            const doc = new Document({
+                sections: [{
+                    properties: {
+                        page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } }
+                    },
+                    children: children
+                }]
+            });
+
+            const blob = await Packer.toBlob(doc);
+            saveAs(blob, 'arguments_333.docx');
         }
 
         function saveToHistory(inputPreview, fullText) {
