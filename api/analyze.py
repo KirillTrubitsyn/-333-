@@ -130,9 +130,9 @@ class handler(BaseHTTPRequestHandler):
                 user_comments
             )
 
-            # Вызов Gemini API - модель Gemini 3 Pro Preview
+            # Вызов Gemini API
             model = genai.GenerativeModel(
-                model_name="gemini-2.5-flash-preview-05-20",
+                model_name="gemini-2.0-flash",
                 system_instruction=system_prompt
             )
 
