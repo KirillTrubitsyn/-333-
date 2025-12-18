@@ -662,10 +662,26 @@
                     const container = document.getElementById('ratesContainer');
 
                     if (currentRate) {
-                        container.innerHTML = `
-                            <div style="font-size: 24px; font-weight: 700; color: #1E3A5F;">${currentRate.key_rate}%</div>
+                        let html = `
+                            <div style="font-size: 28px; font-weight: 700; color: #1E3A5F;">${currentRate.key_rate}%</div>
                             <div style="font-size: 12px; color: #8899A6; margin-top: 4px;">с ${formatDate(currentRate.date_from)}</div>
                         `;
+
+                        // Добавляем историю если есть
+                        if (cachedRates.length > 1) {
+                            html += `
+                                <details style="margin-top: 12px;">
+                                    <summary style="font-size: 12px; color: #8899A6; cursor: pointer;">История изменений</summary>
+                                    <div style="margin-top: 8px; font-size: 12px; color: #4A5568;">
+                                        ${cachedRates.slice(-10).reverse().map(r =>
+                                            `<div style="padding: 3px 0;">с ${formatDate(r.date_from)}: <strong>${r.key_rate}%</strong></div>`
+                                        ).join('')}
+                                    </div>
+                                </details>
+                            `;
+                        }
+
+                        container.innerHTML = html;
                     } else {
                         container.innerHTML = '<div style="color: #8899A6;">Ставка недоступна</div>';
                     }
