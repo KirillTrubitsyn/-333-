@@ -1,16 +1,18 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+
+# API Keys
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+
+# Gemini setup
 import google.generativeai as genai
 from google.generativeai.types import HarmCategory, HarmBlockThreshold
-
-# Конфигурация Gemini
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 
 if GEMINI_API_KEY:
     genai.configure(api_key=GEMINI_API_KEY)
 
-# Настройки безопасности - разрешаем юридический контент
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
     HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
@@ -18,9 +20,11 @@ SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
+# Claude setup
+import anthropic
+
 
 def build_system_prompt(rates_info: str) -> str:
-    """Создать системный промпт для Gemini"""
     return f"""Ты — опытный российский юрист. Твоя задача — создать профессиональный аналитический документ в стиле Кузнецова.
 
 СТИЛЬ КУЗНЕЦОВА — принципы:
@@ -69,7 +73,6 @@ def build_system_prompt(rates_info: str) -> str:
 
 
 def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comments: str) -> str:
-    """Создать пользовательский промпт"""
     prompt_parts = []
 
     prompt_parts.append("ИСХОДНЫЕ МАТЕРИАЛЫ ДЛЯ АНАЛИЗА")
@@ -103,38 +106,63 @@ def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comm
     return "\n".join(prompt_parts)
 
 
-def get_response_text(response):
-    """Безопасное получение текста из ответа Gemini"""
+def clean_markdown(text: str) -> str:
+    """Убираем markdown из текста"""
+    return text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
+
+
+def call_gemini(system_prompt: str, user_prompt: str) -> str:
+    """Вызов Gemini API"""
+    model = genai.GenerativeModel(
+        model_name="gemini-2.5-pro",
+        system_instruction=system_prompt
+    )
+
+    response = model.generate_content(
+        user_prompt,
+        generation_config=genai.GenerationConfig(
+            temperature=0.4,
+            max_output_tokens=8192,
+        ),
+        safety_settings=SAFETY_SETTINGS
+    )
+
+    # Получаем текст
     try:
         text = response.text
-        # Убираем возможные остатки markdown
-        text = text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
-        return text
-    except ValueError:
-        if response.candidates:
-            candidate = response.candidates[0]
-            if candidate.content and candidate.content.parts:
-                text = candidate.content.parts[0].text
-                text = text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
-                return text
-        if response.prompt_feedback:
-            return f"Запрос заблокирован: {response.prompt_feedback}"
-        return "Не удалось получить ответ от AI"
+    except (ValueError, AttributeError):
+        try:
+            if response.candidates and len(response.candidates) > 0:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                        text = candidate.content.parts[0].text
+        except (AttributeError, IndexError):
+            raise Exception("Не удалось получить ответ от Gemini")
+
+    return clean_markdown(text)
+
+
+def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
+    """Вызов Claude API"""
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+
+    message = client.messages.create(
+        model=model_id,
+        max_tokens=8192,
+        system=system_prompt,
+        messages=[
+            {"role": "user", "content": user_prompt}
+        ]
+    )
+
+    text = message.content[0].text
+    return clean_markdown(text)
 
 
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
-            if not GEMINI_API_KEY:
-                self.send_response(503)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({
-                    "error": "Gemini API не настроен. Установите GEMINI_API_KEY в переменных окружения Vercel"
-                }).encode())
-                return
-
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
@@ -144,6 +172,7 @@ class handler(BaseHTTPRequestHandler):
             other_documents = data.get('other_documents', '')
             user_comments = data.get('user_comments', '')
             rates_info = data.get('rates_info', 'Ставки ЦБ недоступны')
+            model = data.get('model', 'gemini-2.5-pro')
 
             if not claim_text.strip():
                 self.send_response(400)
@@ -155,6 +184,28 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
+            # Проверяем доступность API
+            is_claude = model.startswith('claude')
+            if is_claude and not ANTHROPIC_API_KEY:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Claude API не настроен. Добавьте ANTHROPIC_API_KEY в Vercel"
+                }).encode())
+                return
+
+            if not is_claude and not GEMINI_API_KEY:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Gemini API не настроен. Добавьте GEMINI_API_KEY в Vercel"
+                }).encode())
+                return
+
             system_prompt = build_system_prompt(rates_info)
             user_prompt = build_user_prompt(
                 claim_text,
@@ -163,37 +214,11 @@ class handler(BaseHTTPRequestHandler):
                 user_comments
             )
 
-            model = genai.GenerativeModel(
-                model_name="gemini-2.5-pro",
-                system_instruction=system_prompt
-            )
-
-            response = model.generate_content(
-                user_prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.4,
-                    max_output_tokens=8192,
-                ),
-                safety_settings=SAFETY_SETTINGS
-            )
-
-            arguments_text = get_response_text(response)
-
-            # Краткое резюме
-            summary_prompt = f"""Кратко (2-3 предложения) опиши основные аргументы. Без markdown, без звездочек:
-
-{arguments_text[:2000]}"""
-
-            summary_response = model.generate_content(
-                summary_prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=300,
-                ),
-                safety_settings=SAFETY_SETTINGS
-            )
-
-            summary = get_response_text(summary_response)
+            # Вызываем нужную модель
+            if is_claude:
+                arguments_text = call_claude(system_prompt, user_prompt, model)
+            else:
+                arguments_text = call_gemini(system_prompt, user_prompt)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
@@ -201,7 +226,7 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "arguments_text": arguments_text,
-                "summary": summary
+                "model_used": model
             }).encode())
 
         except Exception as e:
@@ -210,7 +235,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             self.wfile.write(json.dumps({
-                "error": f"Ошибка при обращении к Gemini AI: {str(e)}"
+                "error": f"Ошибка AI: {str(e)}"
             }).encode())
 
     def do_OPTIONS(self):

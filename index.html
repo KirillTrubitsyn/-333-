@@ -43,16 +43,6 @@
 
         .header h1 { font-size: 24px; margin-bottom: 8px; font-weight: 600; }
         .header p { font-size: 14px; opacity: 0.85; }
-        .header .ai-badge {
-            display: inline-block;
-            background: linear-gradient(135deg, #C9A227 0%, #E8C547 100%);
-            color: #1E3A5F;
-            padding: 5px 14px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-top: 10px;
-        }
 
         .main-content {
             display: grid;
@@ -139,19 +129,57 @@
         .file-upload .upload-text { font-size: 12px; color: #8899A6; }
         .file-upload .file-name { font-size: 12px; color: #48BB78; font-weight: 600; margin-top: 8px; }
 
-        textarea {
+        textarea, select {
             width: 100%;
             padding: 12px;
             border: 1px solid #E1E8ED;
             border-radius: 6px;
             font-size: 13px;
             font-family: inherit;
+        }
+
+        textarea {
             resize: vertical;
             min-height: 120px;
         }
 
-        textarea:focus { outline: none; border-color: #C9A227; }
+        textarea:focus, select:focus { outline: none; border-color: #C9A227; }
         textarea::placeholder { color: #A0AEC0; }
+
+        .model-selector {
+            background: white;
+            border: 1px solid #E1E8ED;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .model-selector h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1E3A5F;
+            margin-bottom: 12px;
+        }
+
+        .model-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .model-option {
+            padding: 10px;
+            border: 2px solid #E1E8ED;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .model-option:hover { border-color: #C9A227; }
+        .model-option.selected { border-color: #1E3A5F; background: #F0F5FF; }
+        .model-option .model-name { font-weight: 600; font-size: 13px; color: #1E3A5F; }
+        .model-option .model-desc { font-size: 11px; color: #8899A6; margin-top: 4px; }
 
         .rates-info {
             background: #F0F5FF;
@@ -188,6 +216,9 @@
         .btn-success { background: #48BB78; color: white; }
         .btn-success:hover { background: #38A169; }
 
+        .btn-warning { background: #ED8936; color: white; }
+        .btn-warning:hover { background: #DD6B20; }
+
         .output-box {
             background: white;
             border: 1px solid #E1E8ED;
@@ -202,18 +233,19 @@
 
         .output-empty { color: #A0AEC0; font-style: italic; text-align: center; padding-top: 80px; }
 
-        .summary-box {
-            background: #F0FFF4;
-            border: 1px solid #9AE6B4;
-            border-radius: 8px;
-            padding: 12px;
-            margin-bottom: 15px;
-            font-size: 13px;
-            color: #276749;
+        .model-badge {
+            display: inline-block;
+            background: #E8EEF2;
+            color: #1E3A5F;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-bottom: 10px;
         }
 
         .action-buttons { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
-        .action-buttons .btn { flex: 1; min-width: 140px; }
+        .action-buttons .btn { flex: 1; min-width: 120px; }
 
         .loading { display: none; text-align: center; padding: 40px; }
         .loading.active { display: block; }
@@ -278,6 +310,7 @@
             .main-content { grid-template-columns: 1fr; }
             .form-section, .output-section { max-height: none; border-right: none; }
             .form-section { border-bottom: 1px solid #E1E8ED; }
+            .model-options { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -286,7 +319,6 @@
         <div class="header">
             <h1>Генератор аргументов против снижения неустойки</h1>
             <p>Создание аргументов для возражений по ст. 333 ГК РФ</p>
-            <span class="ai-badge">Powered by Gemini AI</span>
         </div>
 
         <div class="main-content">
@@ -336,6 +368,24 @@
                     <textarea id="userComments" placeholder="Дополнительная информация, акценты, пожелания..." style="min-height: 80px;"></textarea>
                 </div>
 
+                <div class="model-selector">
+                    <h3>Выбор AI модели</h3>
+                    <div class="model-options">
+                        <div class="model-option selected" data-model="gemini-2.5-pro" onclick="selectModel(this)">
+                            <div class="model-name">Gemini 2.5 Pro</div>
+                            <div class="model-desc">Google, быстрый</div>
+                        </div>
+                        <div class="model-option" data-model="claude-sonnet-4-20250514" onclick="selectModel(this)">
+                            <div class="model-name">Claude Sonnet 4</div>
+                            <div class="model-desc">Anthropic, баланс</div>
+                        </div>
+                        <div class="model-option" data-model="claude-opus-4-20250514" onclick="selectModel(this)">
+                            <div class="model-name">Claude Opus 4</div>
+                            <div class="model-desc">Anthropic, мощный</div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="rates-info">
                     <h4>📊 Ключевая ставка ЦБ РФ</h4>
                     <div id="ratesContainer">Загрузка...</div>
@@ -343,7 +393,7 @@
 
                 <div class="button-group">
                     <button id="analyzeBtn" class="btn btn-primary" onclick="generateArguments()">
-                        Сгенерировать аргументы
+                        Сгенерировать
                     </button>
                     <button class="btn btn-secondary" onclick="clearForm()">Очистить</button>
                 </div>
@@ -361,18 +411,19 @@
 
                 <div id="loading" class="loading">
                     <div class="spinner"></div>
-                    <div class="loading-text">Генерация аргументов...</div>
+                    <div class="loading-text" id="loadingText">Генерация аргументов...</div>
                 </div>
 
-                <div id="summaryBox" class="summary-box" style="display: none;"></div>
+                <div id="modelBadge" class="model-badge" style="display: none;"></div>
 
                 <div id="output" class="output-box output-empty">
-                    Загрузите документы и нажмите «Сгенерировать аргументы»
+                    Загрузите документы и нажмите «Сгенерировать»
                 </div>
 
                 <div id="actionButtons" class="action-buttons" style="display: none;">
                     <button class="btn btn-primary" onclick="copyToClipboard()">📋 Копировать</button>
-                    <button class="btn btn-success" onclick="downloadDocx()">📥 Скачать DOCX</button>
+                    <button class="btn btn-success" onclick="downloadDocx()">📥 DOCX</button>
+                    <button class="btn btn-warning" onclick="regenerateWithDifferentModel()">🔄 Другая модель</button>
                 </div>
             </div>
         </div>
@@ -391,11 +442,26 @@
         let cachedRates = [];
         let currentRate = null;
         let lastResult = '';
+        let selectedModel = 'gemini-2.5-pro';
+        let lastUsedModel = '';
+        let lastInputData = null;
+
+        const MODEL_NAMES = {
+            'gemini-2.5-pro': 'Gemini 2.5 Pro',
+            'claude-sonnet-4-20250514': 'Claude Sonnet 4',
+            'claude-opus-4-20250514': 'Claude Opus 4'
+        };
 
         document.addEventListener('DOMContentLoaded', () => {
             loadRates();
             loadHistory();
         });
+
+        function selectModel(el) {
+            document.querySelectorAll('.model-option').forEach(opt => opt.classList.remove('selected'));
+            el.classList.add('selected');
+            selectedModel = el.dataset.model;
+        }
 
         async function loadRates() {
             try {
@@ -455,7 +521,6 @@
         async function readFileAsText(file) {
             const fileName = file.name.toLowerCase();
 
-            // Для DOCX используем mammoth
             if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
@@ -473,7 +538,6 @@
                 });
             }
 
-            // Для TXT и RTF читаем как текст
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => resolve(e.target.result);
@@ -482,13 +546,16 @@
             });
         }
 
-        async function generateArguments() {
+        async function generateArguments(useModel = null) {
             const analyzeBtn = document.getElementById('analyzeBtn');
             const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loadingText');
             const output = document.getElementById('output');
-            const summaryBox = document.getElementById('summaryBox');
             const errorBox = document.getElementById('errorBox');
             const actionButtons = document.getElementById('actionButtons');
+            const modelBadge = document.getElementById('modelBadge');
+
+            const modelToUse = useModel || selectedModel;
 
             const claimFile = document.getElementById('claimFile').files[0];
             const claimText = document.getElementById('claimText').value;
@@ -512,12 +579,20 @@
                 return;
             }
 
+            // Сохраняем данные для перегенерации
+            lastInputData = {
+                claim_text: finalClaimText,
+                response_text: finalResponseText,
+                user_comments: userComments
+            };
+
             analyzeBtn.disabled = true;
             loading.classList.add('active');
+            loadingText.textContent = `Генерация (${MODEL_NAMES[modelToUse]})...`;
             output.style.display = 'none';
-            summaryBox.style.display = 'none';
             errorBox.classList.remove('active');
             actionButtons.style.display = 'none';
+            modelBadge.style.display = 'none';
 
             try {
                 let ratesInfo = 'Ставка ЦБ недоступна';
@@ -533,7 +608,8 @@
                         response_text: finalResponseText,
                         other_documents: '',
                         user_comments: userComments,
-                        rates_info: ratesInfo
+                        rates_info: ratesInfo,
+                        model: modelToUse
                     })
                 });
 
@@ -542,17 +618,101 @@
                 if (!response.ok) throw new Error(result.error || 'Ошибка');
 
                 lastResult = result.arguments_text;
+                lastUsedModel = result.model_used || modelToUse;
+
+                modelBadge.textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
+                modelBadge.style.display = 'inline-block';
+
                 output.textContent = result.arguments_text;
                 output.classList.remove('output-empty');
                 output.style.display = 'block';
 
-                if (result.summary) {
-                    summaryBox.textContent = result.summary;
-                    summaryBox.style.display = 'block';
+                actionButtons.style.display = 'flex';
+                saveToHistory(result.arguments_text, lastUsedModel);
+
+            } catch (error) {
+                errorBox.textContent = '❌ ' + error.message;
+                errorBox.classList.add('active');
+                output.style.display = 'block';
+            } finally {
+                analyzeBtn.disabled = false;
+                loading.classList.remove('active');
+            }
+        }
+
+        function regenerateWithDifferentModel() {
+            if (!lastInputData) {
+                alert('Сначала сгенерируйте аргументы');
+                return;
+            }
+
+            // Находим следующую модель
+            const models = ['gemini-2.5-pro', 'claude-sonnet-4-20250514', 'claude-opus-4-20250514'];
+            const currentIndex = models.indexOf(lastUsedModel);
+            const nextIndex = (currentIndex + 1) % models.length;
+            const nextModel = models[nextIndex];
+
+            // Выбираем её визуально
+            document.querySelectorAll('.model-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.model === nextModel);
+            });
+            selectedModel = nextModel;
+
+            // Генерируем с новой моделью, используя сохраненные данные
+            generateWithSavedData(nextModel);
+        }
+
+        async function generateWithSavedData(modelToUse) {
+            if (!lastInputData) return;
+
+            const analyzeBtn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loading');
+            const loadingText = document.getElementById('loadingText');
+            const output = document.getElementById('output');
+            const errorBox = document.getElementById('errorBox');
+            const actionButtons = document.getElementById('actionButtons');
+            const modelBadge = document.getElementById('modelBadge');
+
+            analyzeBtn.disabled = true;
+            loading.classList.add('active');
+            loadingText.textContent = `Генерация (${MODEL_NAMES[modelToUse]})...`;
+            output.style.display = 'none';
+            errorBox.classList.remove('active');
+            actionButtons.style.display = 'none';
+
+            try {
+                let ratesInfo = 'Ставка ЦБ недоступна';
+                if (currentRate) {
+                    ratesInfo = `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})`;
                 }
 
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ...lastInputData,
+                        other_documents: '',
+                        rates_info: ratesInfo,
+                        model: modelToUse
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) throw new Error(result.error || 'Ошибка');
+
+                lastResult = result.arguments_text;
+                lastUsedModel = result.model_used || modelToUse;
+
+                modelBadge.textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
+                modelBadge.style.display = 'inline-block';
+
+                output.textContent = result.arguments_text;
+                output.classList.remove('output-empty');
+                output.style.display = 'block';
+
                 actionButtons.style.display = 'flex';
-                saveToHistory(finalClaimText.substring(0, 100), result.arguments_text);
+                saveToHistory(result.arguments_text, lastUsedModel);
 
             } catch (error) {
                 errorBox.textContent = '❌ ' + error.message;
@@ -574,11 +734,12 @@
             ['claimText', 'responseText', 'userComments'].forEach(id => document.getElementById(id).value = '');
 
             const output = document.getElementById('output');
-            output.textContent = 'Загрузите документы и нажмите «Сгенерировать аргументы»';
+            output.textContent = 'Загрузите документы и нажмите «Сгенерировать»';
             output.classList.add('output-empty');
-            document.getElementById('summaryBox').style.display = 'none';
             document.getElementById('errorBox').classList.remove('active');
             document.getElementById('actionButtons').style.display = 'none';
+            document.getElementById('modelBadge').style.display = 'none';
+            lastInputData = null;
         }
 
         function copyToClipboard() {
@@ -588,9 +749,8 @@
         }
 
         async function downloadDocx() {
-            const { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
 
-            // Парсим текст в параграфы
             const lines = lastResult.split('\n');
             const children = [];
 
@@ -601,7 +761,6 @@
                     continue;
                 }
 
-                // Определяем тип строки
                 const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
                 const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
 
@@ -638,14 +797,14 @@
             saveAs(blob, 'arguments_333.docx');
         }
 
-        function saveToHistory(inputPreview, fullText) {
+        function saveToHistory(fullText, model) {
             const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
-            // Сохраняем превью из РЕЗУЛЬТАТА, а не из входных данных
             const resultPreview = fullText.substring(0, 100).replace(/[\r\n]+/g, ' ');
             history.unshift({
                 date: new Date().toISOString(),
                 preview: resultPreview,
-                text: fullText
+                text: fullText,
+                model: model
             });
             if (history.length > 10) history.pop();
             localStorage.setItem('argumentsHistory', JSON.stringify(history));
@@ -665,7 +824,7 @@
             section.style.display = 'block';
             list.innerHTML = history.map((item, i) => `
                 <div class="history-item" onclick="loadFromHistory(${i})">
-                    <div class="date">${formatDate(item.date)}</div>
+                    <div class="date">${formatDate(item.date)} ${item.model ? '• ' + (MODEL_NAMES[item.model] || item.model) : ''}</div>
                     <div class="preview">${item.preview}...</div>
                 </div>
             `).join('');
@@ -675,10 +834,17 @@
             const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
             if (history[index]) {
                 lastResult = history[index].text;
+                lastUsedModel = history[index].model || '';
                 document.getElementById('output').textContent = history[index].text;
                 document.getElementById('output').classList.remove('output-empty');
                 document.getElementById('output').style.display = 'block';
                 document.getElementById('actionButtons').style.display = 'flex';
+
+                const modelBadge = document.getElementById('modelBadge');
+                if (lastUsedModel) {
+                    modelBadge.textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
+                    modelBadge.style.display = 'inline-block';
+                }
             }
         }
     </script>
