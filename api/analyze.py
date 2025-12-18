@@ -105,21 +105,35 @@ def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comm
 
 def get_response_text(response):
     """Безопасное получение текста из ответа Gemini"""
+    text = ""
+
+    # Пробуем получить текст разными способами
     try:
         text = response.text
-        # Убираем возможные остатки markdown
+    except (ValueError, AttributeError):
+        # Пробуем через candidates
+        try:
+            if response.candidates and len(response.candidates) > 0:
+                candidate = response.candidates[0]
+                if hasattr(candidate, 'content') and candidate.content:
+                    if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                        text = candidate.content.parts[0].text
+        except (AttributeError, IndexError):
+            pass
+
+    # Если текст получен, очищаем от markdown
+    if text:
         text = text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
         return text
-    except ValueError:
-        if response.candidates:
-            candidate = response.candidates[0]
-            if candidate.content and candidate.content.parts:
-                text = candidate.content.parts[0].text
-                text = text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
-                return text
+
+    # Проверяем причину блокировки
+    try:
         if response.prompt_feedback:
             return f"Запрос заблокирован: {response.prompt_feedback}"
-        return "Не удалось получить ответ от AI"
+    except AttributeError:
+        pass
+
+    return "Не удалось получить ответ от AI"
 
 
 class handler(BaseHTTPRequestHandler):
@@ -179,21 +193,27 @@ class handler(BaseHTTPRequestHandler):
 
             arguments_text = get_response_text(response)
 
-            # Краткое резюме
-            summary_prompt = f"""Кратко (2-3 предложения) опиши основные аргументы. Без markdown, без звездочек:
+            # Краткое резюме (опционально, не блокирует основной результат)
+            summary = ""
+            try:
+                summary_prompt = f"""Кратко (2-3 предложения) опиши основные аргументы. Без markdown, без звездочек:
 
 {arguments_text[:2000]}"""
 
-            summary_response = model.generate_content(
-                summary_prompt,
-                generation_config=genai.GenerationConfig(
-                    temperature=0.3,
-                    max_output_tokens=300,
-                ),
-                safety_settings=SAFETY_SETTINGS
-            )
-
-            summary = get_response_text(summary_response)
+                summary_response = model.generate_content(
+                    summary_prompt,
+                    generation_config=genai.GenerationConfig(
+                        temperature=0.3,
+                        max_output_tokens=300,
+                    ),
+                    safety_settings=SAFETY_SETTINGS
+                )
+                summary = get_response_text(summary_response)
+                # Если summary содержит ошибку, просто оставим пустым
+                if "Не удалось" in summary or "заблокирован" in summary:
+                    summary = ""
+            except Exception:
+                summary = ""  # Игнорируем ошибки summary
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
