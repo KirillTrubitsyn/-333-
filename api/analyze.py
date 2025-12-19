@@ -32,7 +32,7 @@ def get_anthropic_client():
         import anthropic
         anthropic_client = anthropic.Anthropic(
             api_key=ANTHROPIC_API_KEY,
-            timeout=55.0  # 55 сек (в пределах 60 сек Vercel)
+            timeout=290.0  # 290 сек для думающих моделей (в пределах 300 сек Vercel Pro)
         )
     return anthropic_client
 
@@ -46,7 +46,7 @@ def get_openai_client():
         from openai import OpenAI
         openai_client = OpenAI(
             api_key=OPENAI_API_KEY,
-            timeout=55.0
+            timeout=290.0  # 290 сек для думающих моделей (o1, o3)
         )
     return openai_client
 
@@ -226,15 +226,36 @@ def call_openai(system_prompt: str, user_prompt: str, model_id: str) -> str:
         raise Exception("OpenAI API недоступен. Проверьте OPENAI_API_KEY")
 
     try:
-        response = client.chat.completions.create(
-            model=model_id,
-            max_completion_tokens=2048,
-            messages=[
+        # Думающие модели (o1, o3, gpt-5) не поддерживают system role
+        is_reasoning_model = any(x in model_id for x in ['o1', 'o3', 'gpt-5'])
+
+        if is_reasoning_model:
+            # Для думающих моделей используем developer role
+            messages = [
+                {"role": "developer", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        else:
+            messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ]
+
+        response = client.chat.completions.create(
+            model=model_id,
+            max_completion_tokens=4096,
+            messages=messages
         )
+
+        # Получаем текст ответа (может быть None для некоторых моделей)
         text = response.choices[0].message.content
+        if not text:
+            # Проверяем reasoning content для думающих моделей
+            if hasattr(response.choices[0].message, 'reasoning_content'):
+                text = response.choices[0].message.reasoning_content
+            if not text:
+                raise Exception("Модель вернула пустой ответ. Попробуйте другую модель.")
+
         return clean_markdown(text)
     except Exception as e:
         error_msg = str(e).lower()

@@ -1596,11 +1596,12 @@
                     });
 
                     const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})` : '';
-                    const apiTimeout = modelToUse.includes('opus') ? 120000 : 60000;  // Opus: 2 мин, остальные: 1 мин
+                    const isThinkingModel = modelToUse.includes('opus') || modelToUse.includes('o1') || modelToUse.includes('o3');
+                    const apiTimeout = isThinkingModel ? 300000 : 120000;  // Думающие модели: 5 мин, остальные: 2 мин
                     const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) }, apiTimeout);
 
                     setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
-                    if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
+                    if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил лимит времени. Попробуйте ещё раз.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                     const result = await response.json();
 
                     argumentsText = result.arguments_text;
@@ -1674,10 +1675,11 @@
 
             try {
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
-                const apiTimeout = modelToUse.includes('opus') ? 120000 : 60000;  // Opus: 2 мин, остальные: 1 мин
+                const isThinkingModel = modelToUse.includes('opus') || modelToUse.includes('o1') || modelToUse.includes('o3');
+                const apiTimeout = isThinkingModel ? 300000 : 120000;  // Думающие модели: 5 мин, остальные: 2 мин
                 const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) }, apiTimeout);
                 setProgress(3, 80, 'Получение ответа...', MODEL_NAMES[modelToUse], { showDetails: true, filesTotal: 0, filesProcessed: 0, stage: 'Формирование ответа' });
-                if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
+                if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил лимит времени. Попробуйте ещё раз.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
 
                 setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
