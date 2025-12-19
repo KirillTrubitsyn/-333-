@@ -41,9 +41,9 @@ def fetch_cbr_rates():
 
     except Exception as e:
         # Fallback - актуальные данные на декабрь 2025
-        # Ключевая ставка ЦБ РФ: 16.5% с 24.10.2025
+        # Ключевая ставка ЦБ РФ: 16% с 19.12.2025
         rates = [
-            {"date_from": "2025-10-24", "key_rate": 16.5},
+            {"date_from": "2025-12-19", "key_rate": 16.0},
         ]
 
     return rates
@@ -52,7 +52,7 @@ def fetch_cbr_rates():
 def get_current_rate(rates):
     """Получить текущую (последнюю) ставку"""
     if not rates:
-        return {"date_from": "2025-10-24", "key_rate": 16.5}
+        return {"date_from": "2025-12-19", "key_rate": 16.0}
 
     # Возвращаем последнюю ставку (самую актуальную)
     return rates[-1]
@@ -83,7 +83,7 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "error": f"Не удалось загрузить ставки ЦБ: {str(e)}",
-                "current": {"date_from": "2025-10-24", "key_rate": 16.5}
+                "current": {"date_from": "2025-12-19", "key_rate": 16.0}
             }).encode())
 
     def do_OPTIONS(self):
