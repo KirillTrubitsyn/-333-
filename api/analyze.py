@@ -226,26 +226,31 @@ def call_openai(system_prompt: str, user_prompt: str, model_id: str) -> str:
         raise Exception("OpenAI API недоступен. Проверьте OPENAI_API_KEY")
 
     try:
-        # Думающие модели (o1, o3, gpt-5) не поддерживают system role
-        is_reasoning_model = any(x in model_id for x in ['o1', 'o3', 'gpt-5'])
+        # Только o1/o3 - настоящие reasoning модели, требуют developer role
+        is_reasoning_model = any(x in model_id for x in ['o1', 'o3'])
 
         if is_reasoning_model:
-            # Для думающих моделей используем developer role
+            # Для o1/o3 используем developer role
             messages = [
                 {"role": "developer", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ]
+            response = client.chat.completions.create(
+                model=model_id,
+                max_completion_tokens=8192,
+                messages=messages
+            )
         else:
+            # Для gpt-4, gpt-5 и других - стандартный формат
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ]
-
-        response = client.chat.completions.create(
-            model=model_id,
-            max_completion_tokens=4096,
-            messages=messages
-        )
+            response = client.chat.completions.create(
+                model=model_id,
+                max_tokens=8192,
+                messages=messages
+            )
 
         # Получаем текст ответа
         text = None
