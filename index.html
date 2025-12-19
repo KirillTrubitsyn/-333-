@@ -9,7 +9,11 @@
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+    <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#1E3A5F">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="333 Генератор">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -153,18 +157,82 @@
             margin-bottom: 6px;
         }
         .file-item .file-preview {
-            width: 40px;
-            height: 40px;
-            border-radius: 4px;
+            width: 60px;
+            height: 60px;
+            border-radius: 6px;
             object-fit: cover;
             background: #E1E8ED;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
+            font-size: 22px;
             overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
         }
+        .file-item .file-preview:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .file-item .file-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .file-item .file-preview .zoom-hint {
+            position: absolute;
+            bottom: 2px;
+            right: 2px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 10px;
+            padding: 2px 4px;
+            border-radius: 3px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .file-item .file-preview:hover .zoom-hint { opacity: 1; }
+        /* Image preview modal */
+        .image-preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            cursor: zoom-out;
+        }
+        .image-preview-modal.active { display: flex; }
+        .image-preview-modal img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 8px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+        .image-preview-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .image-preview-filename {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255,255,255,0.9);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #1E3A5F;
+        }
         .file-item .file-info { flex: 1; }
         .file-item .file-name { font-size: 12px; color: #2D3748; font-weight: 500; }
         .file-item .file-size { font-size: 10px; color: #8899A6; }
@@ -288,6 +356,50 @@
         .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #C9A227, #E8C547); width: 0%; transition: width 0.3s; }
         .progress-text { text-align: center; font-size: 13px; color: #4A5568; margin-top: 10px; }
         .progress-time { text-align: center; font-size: 11px; color: #8899A6; margin-top: 5px; }
+        /* Animated progress bar */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(201, 162, 39, 0.4); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(201, 162, 39, 0); }
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .progress-step.active .step-icon {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .progress-bar-fill {
+            background: linear-gradient(90deg, #C9A227 0%, #E8C547 25%, #C9A227 50%, #E8C547 75%, #C9A227 100%);
+            background-size: 200% 100%;
+            animation: shimmer 2s linear infinite;
+        }
+        .progress-step::after {
+            transition: background 0.3s ease;
+        }
+        .progress-step.completed::after {
+            background: #48BB78 !important;
+        }
+        .progress-substep {
+            font-size: 10px;
+            color: #C9A227;
+            margin-top: 4px;
+            min-height: 14px;
+        }
+        .progress-details {
+            background: #F4F7F9;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: #4A5568;
+        }
+        .progress-details-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+        }
+        .progress-details-item .label { color: #8899A6; }
+        .progress-details-item .value { font-weight: 500; color: #1E3A5F; }
         .output-box {
             background: white;
             border: 1px solid #E1E8ED;
@@ -506,14 +618,40 @@
 
                     <div id="progressContainer" class="progress-container">
                         <div class="progress-steps">
-                            <div class="progress-step" data-step="1"><div class="step-icon">📂</div><div class="step-label">Чтение файлов</div></div>
-                            <div class="progress-step" data-step="2"><div class="step-icon">🔍</div><div class="step-label">Распознавание</div></div>
-                            <div class="progress-step" data-step="3"><div class="step-icon">🤖</div><div class="step-label">Генерация</div></div>
-                            <div class="progress-step" data-step="4"><div class="step-icon">✅</div><div class="step-label">Готово</div></div>
+                            <div class="progress-step" data-step="1">
+                                <div class="step-icon">📂</div>
+                                <div class="step-label">Чтение файлов</div>
+                                <div class="progress-substep" id="substep-1"></div>
+                            </div>
+                            <div class="progress-step" data-step="2">
+                                <div class="step-icon">🔍</div>
+                                <div class="step-label">OCR</div>
+                                <div class="progress-substep" id="substep-2"></div>
+                            </div>
+                            <div class="progress-step" data-step="3">
+                                <div class="step-icon">🤖</div>
+                                <div class="step-label">Генерация</div>
+                                <div class="progress-substep" id="substep-3"></div>
+                            </div>
+                            <div class="progress-step" data-step="4">
+                                <div class="step-icon">✅</div>
+                                <div class="step-label">Готово</div>
+                                <div class="progress-substep" id="substep-4"></div>
+                            </div>
                         </div>
                         <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
                         <div class="progress-text" id="progressText">Подготовка...</div>
                         <div class="progress-time" id="progressTime"></div>
+                        <div class="progress-details" id="progressDetails" style="display: none;">
+                            <div class="progress-details-item">
+                                <span class="label">Файлов обработано:</span>
+                                <span class="value" id="filesProcessed">0 / 0</span>
+                            </div>
+                            <div class="progress-details-item">
+                                <span class="label">Текущий этап:</span>
+                                <span class="value" id="currentStage">-</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="errorBox" class="error-box"></div>
@@ -601,6 +739,13 @@
             </div>
             <div class="modal-footer"><button class="btn btn-secondary" onclick="closeTemplateModal()">Отмена</button><button class="btn btn-primary" onclick="confirmSaveTemplate()">Сохранить</button></div>
         </div>
+    </div>
+
+    <!-- Image Preview Modal -->
+    <div id="imagePreviewModal" class="image-preview-modal" onclick="closeImagePreview()">
+        <button class="image-preview-close" onclick="closeImagePreview()">×</button>
+        <img id="imagePreviewImg" src="" alt="Preview">
+        <div class="image-preview-filename" id="imagePreviewFilename"></div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -705,11 +850,29 @@
             else {
                 listEl.innerHTML = files.map((file, i) => {
                     const isImage = file.type.startsWith('image/');
-                    const preview = isImage ? `<img src="${URL.createObjectURL(file)}">` : getFileIcon(file.name);
-                    return `<div class="file-item"><div class="file-preview">${preview}</div><div class="file-info"><div class="file-name">${file.name}</div><div class="file-size">${formatFileSize(file.size)}</div></div><span class="remove-file" onclick="removeFile('${docType}', ${i})">✕</span></div>`;
+                    const objectUrl = isImage ? URL.createObjectURL(file) : '';
+                    const preview = isImage
+                        ? `<img src="${objectUrl}"><span class="zoom-hint">🔍</span>`
+                        : getFileIcon(file.name);
+                    const clickHandler = isImage
+                        ? `onclick="openImagePreview('${objectUrl}', '${file.name.replace(/'/g, "\\'")}'); event.stopPropagation();"`
+                        : '';
+                    return `<div class="file-item"><div class="file-preview" ${clickHandler}>${preview}</div><div class="file-info"><div class="file-name">${file.name}</div><div class="file-size">${formatFileSize(file.size)}</div></div><span class="remove-file" onclick="removeFile('${docType}', ${i})">✕</span></div>`;
                 }).join('');
                 uploadArea.classList.add('has-file');
             }
+        }
+
+        function openImagePreview(src, filename) {
+            document.getElementById('imagePreviewImg').src = src;
+            document.getElementById('imagePreviewFilename').textContent = filename;
+            document.getElementById('imagePreviewModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeImagePreview() {
+            document.getElementById('imagePreviewModal').classList.remove('active');
+            document.body.style.overflow = '';
         }
 
         function getFileIcon(filename) {
@@ -782,20 +945,53 @@
             });
         }
 
-        function setProgress(step, percent, text) {
+        let progressState = { totalFiles: 0, processedFiles: 0, currentFile: '' };
+
+        function setProgress(step, percent, text, substepText = '', details = {}) {
             document.getElementById('progressContainer').classList.add('active');
             document.getElementById('progressFill').style.width = percent + '%';
             document.getElementById('progressText').textContent = text;
+
+            // Update steps visualization
             document.querySelectorAll('.progress-step').forEach(el => {
                 const stepNum = parseInt(el.dataset.step);
                 el.classList.remove('active', 'completed');
                 if (stepNum < step) el.classList.add('completed');
                 if (stepNum === step) el.classList.add('active');
             });
-            if (generationStartTime) document.getElementById('progressTime').textContent = `Прошло: ${((Date.now() - generationStartTime) / 1000).toFixed(1)} сек.`;
+
+            // Update substep text
+            for (let i = 1; i <= 4; i++) {
+                const substepEl = document.getElementById(`substep-${i}`);
+                if (substepEl) substepEl.textContent = i === step ? substepText : '';
+            }
+
+            // Update elapsed time
+            if (generationStartTime) {
+                document.getElementById('progressTime').textContent = `Прошло: ${((Date.now() - generationStartTime) / 1000).toFixed(1)} сек.`;
+            }
+
+            // Update progress details
+            const detailsEl = document.getElementById('progressDetails');
+            if (details.showDetails) {
+                detailsEl.style.display = 'block';
+                if (details.filesTotal !== undefined) {
+                    document.getElementById('filesProcessed').textContent = `${details.filesProcessed || 0} / ${details.filesTotal}`;
+                }
+                if (details.stage) {
+                    document.getElementById('currentStage').textContent = details.stage;
+                }
+            }
         }
 
-        function hideProgress() { document.getElementById('progressContainer').classList.remove('active'); }
+        function hideProgress() {
+            document.getElementById('progressContainer').classList.remove('active');
+            document.getElementById('progressDetails').style.display = 'none';
+            for (let i = 1; i <= 4; i++) {
+                const substepEl = document.getElementById(`substep-${i}`);
+                if (substepEl) substepEl.textContent = '';
+            }
+        }
 
         async function processAllFiles(files, statusCallback) {
             const texts = [];
@@ -823,21 +1019,83 @@
             outputBadges.style.display = 'none';
 
             try {
-                setProgress(1, 10, 'Чтение файлов...');
-                if (claimFiles.length > 0) { finalClaimText = await processAllFiles(claimFiles, (msg) => setProgress(1, 20, msg)) + (finalClaimText ? '\n\n' + finalClaimText : ''); }
-                if (responseFiles.length > 0) { setProgress(2, 40, 'Обработка отзыва...'); finalResponseText = await processAllFiles(responseFiles, (msg) => setProgress(2, 50, msg)) + (finalResponseText ? '\n\n' + finalResponseText : ''); }
+                const totalFiles = claimFiles.length + responseFiles.length;
+                let processedFiles = 0;
+                const hasImages = [...claimFiles, ...responseFiles].some(f => f.type.startsWith('image/'));
+
+                // Step 1: Reading files
+                setProgress(1, 5, 'Подготовка к чтению файлов...', '', { showDetails: totalFiles > 0, filesTotal: totalFiles, filesProcessed: 0, stage: 'Инициализация' });
+
+                if (claimFiles.length > 0) {
+                    for (let i = 0; i < claimFiles.length; i++) {
+                        const file = claimFiles[i];
+                        const isImage = file.type.startsWith('image/');
+                        const stepNum = isImage ? 2 : 1;
+                        const stepLabel = isImage ? 'OCR' : 'Чтение';
+                        const progress = 5 + ((i + 1) / totalFiles) * 35;
+
+                        setProgress(stepNum, progress, `${stepLabel}: ${file.name}`, file.name.substring(0, 20) + (file.name.length > 20 ? '...' : ''), {
+                            showDetails: true,
+                            filesTotal: totalFiles,
+                            filesProcessed: processedFiles,
+                            stage: isImage ? 'Распознавание текста (OCR)' : 'Извлечение текста'
+                        });
+
+                        try {
+                            const text = await readFileContent(file, null);
+                            if (text && text.trim()) finalClaimText += `\n\n--- ${file.name} ---\n${text}`;
+                        } catch (err) {
+                            finalClaimText += `\n\n--- ${file.name} ---\n[Ошибка: ${err.message}]`;
+                        }
+                        processedFiles++;
+                    }
+                }
+
+                if (responseFiles.length > 0) {
+                    for (let i = 0; i < responseFiles.length; i++) {
+                        const file = responseFiles[i];
+                        const isImage = file.type.startsWith('image/');
+                        const stepNum = isImage ? 2 : 1;
+                        const stepLabel = isImage ? 'OCR' : 'Чтение';
+                        const progress = 40 + ((i + 1) / responseFiles.length) * 15;
+
+                        setProgress(stepNum, progress, `${stepLabel} отзыва: ${file.name}`, file.name.substring(0, 20) + (file.name.length > 20 ? '...' : ''), {
+                            showDetails: true,
+                            filesTotal: totalFiles,
+                            filesProcessed: processedFiles,
+                            stage: isImage ? 'Распознавание текста (OCR)' : 'Извлечение текста'
+                        });
+
+                        try {
+                            const text = await readFileContent(file, null);
+                            if (text && text.trim()) finalResponseText += `\n\n--- ${file.name} ---\n${text}`;
+                        } catch (err) {
+                            finalResponseText += `\n\n--- ${file.name} ---\n[Ошибка: ${err.message}]`;
+                        }
+                        processedFiles++;
+                    }
+                }
+
                 if (!finalClaimText.trim()) throw new Error('Загрузите иск или введите его текст');
 
                 lastInputData = { claim_text: finalClaimText, response_text: finalResponseText, user_comments: userComments };
-                setProgress(3, 60, `Генерация (${MODEL_NAMES[modelToUse]})...`);
+
+                // Step 3: AI Generation
+                setProgress(3, 60, `Генерация аргументов...`, MODEL_NAMES[modelToUse], {
+                    showDetails: true,
+                    filesTotal: totalFiles,
+                    filesProcessed: processedFiles,
+                    stage: `Модель: ${MODEL_NAMES[modelToUse]}`
+                });
 
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})` : '';
                 const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
-                setProgress(3, 80, 'Получение ответа...');
+
+                setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'Ошибка');
 
-                setProgress(4, 100, 'Готово!');
+                setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
                 const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
 
                 setTimeout(() => {
@@ -884,11 +1142,11 @@
             try {
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
                 const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) });
-                setProgress(3, 80, 'Получение ответа...');
+                setProgress(3, 80, 'Получение ответа...', MODEL_NAMES[modelToUse], { showDetails: true, filesTotal: 0, filesProcessed: 0, stage: 'Формирование ответа' });
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || 'Ошибка');
 
-                setProgress(4, 100, 'Готово!');
+                setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
                 const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
                 setTimeout(() => {
                     hideProgress();
@@ -1128,6 +1386,73 @@
                 if (draft.selectedModel) { selectedModel = draft.selectedModel; document.querySelectorAll('.model-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.model === selectedModel)); }
             }
         }
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('SW registered:', registration.scope);
+
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New version available
+                                    if (confirm('Доступна новая версия приложения. Обновить?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch((error) => {
+                        console.log('SW registration failed:', error);
+                    });
+            });
+        }
+
+        // PWA Install prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+
+            // Show install button if not already installed
+            const installBtn = document.createElement('button');
+            installBtn.className = 'btn btn-info btn-sm';
+            installBtn.innerHTML = '📲 Установить';
+            installBtn.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.2);';
+            installBtn.onclick = async () => {
+                if (deferredPrompt) {
+                    deferredPrompt.prompt();
+                    const { outcome } = await deferredPrompt.userChoice;
+                    if (outcome === 'accepted') {
+                        console.log('PWA installed');
+                    }
+                    deferredPrompt = null;
+                    installBtn.remove();
+                }
+            };
+            document.body.appendChild(installBtn);
+
+            // Auto-hide after 10 seconds
+            setTimeout(() => {
+                if (installBtn.parentNode) {
+                    installBtn.style.transition = 'opacity 0.5s';
+                    installBtn.style.opacity = '0';
+                    setTimeout(() => installBtn.remove(), 500);
+                }
+            }, 10000);
+        });
+
+        // Handle app installed
+        window.addEventListener('appinstalled', () => {
+            console.log('PWA was installed');
+            deferredPrompt = null;
+        });
     </script>
 </body>
 </html>
