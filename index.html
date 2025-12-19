@@ -167,11 +167,13 @@
             justify-content: center;
             font-size: 22px;
             overflow: hidden;
-            cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
             position: relative;
         }
-        .file-item .file-preview:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .file-item .file-preview.clickable {
+            cursor: pointer;
+        }
+        .file-item .file-preview.clickable:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
         .file-item .file-preview img { width: 100%; height: 100%; object-fit: cover; }
         .file-item .file-preview .zoom-hint {
             position: absolute;
@@ -475,6 +477,16 @@
         }
         .error-box.active { display: block; }
         /* Comparison */
+        .comparison-select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #E1E8ED;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            cursor: pointer;
+        }
+        .comparison-select:focus { outline: none; border-color: #C9A227; }
         .comparison-container { display: none; grid-template-columns: 1fr 1fr; gap: 20px; }
         .comparison-container.active { display: grid; }
         .comparison-column { background: white; border: 1px solid #E1E8ED; border-radius: 8px; overflow: hidden; }
@@ -751,28 +763,32 @@
             <div class="calculator-section">
                 <h2 class="section-title">Калькулятор неустойки</h2>
                 <div class="calc-form">
-                    <div class="calc-row"><label>Сумма долга (руб.)</label><input type="number" id="calcDebt" placeholder="1000000" oninput="calculatePenalty()"></div>
-                    <div class="calc-row"><label>Дата начала просрочки</label><input type="date" id="calcStartDate" oninput="calculatePenalty()"></div>
-                    <div class="calc-row"><label>Дата окончания</label><input type="date" id="calcEndDate" oninput="calculatePenalty()"></div>
+                    <div class="calc-row"><label>Сумма долга (руб.)</label><input type="number" id="calcDebt" placeholder="1000000"></div>
+                    <div class="calc-row"><label>Дата начала просрочки</label><input type="date" id="calcStartDate"></div>
+                    <div class="calc-row"><label>Дата окончания</label><input type="date" id="calcEndDate"></div>
                     <div class="calc-row">
                         <label>Ставка неустойки</label>
-                        <select id="calcRateType" onchange="calculatePenalty()">
+                        <select id="calcRateType" onchange="toggleCustomRate()">
                             <option value="contract">По договору (ввести)</option>
                             <option value="395">Ст. 395 ГК (ключ. ставка)</option>
-                            <option value="double">2× ключевой ставки</option>
+                            <option value="double">2x ключевой ставки</option>
                             <option value="01">0.1% в день</option>
                             <option value="05">0.5% в день</option>
                             <option value="1">1% в день</option>
                         </select>
                     </div>
-                    <div class="calc-row" id="customRateRow"><label>Ставка по договору (% годовых)</label><input type="number" id="calcCustomRate" placeholder="36" oninput="calculatePenalty()"></div>
+                    <div class="calc-row" id="customRateRow"><label>Ставка по договору (% годовых)</label><input type="number" id="calcCustomRate" placeholder="36"></div>
+                    <div class="button-group" style="margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="calculatePenalty()">Рассчитать</button>
+                        <button class="btn btn-secondary" onclick="clearCalculator()">Очистить</button>
+                    </div>
                     <div class="calc-result" id="calcResult" style="display: none;">
                         <h4>Результат расчёта</h4>
                         <div class="calc-result-item"><span class="label">Сумма долга</span><span class="value" id="resultDebt">-</span></div>
                         <div class="calc-result-item"><span class="label">Период просрочки</span><span class="value" id="resultDays">-</span></div>
                         <div class="calc-result-item"><span class="label">Ставка</span><span class="value" id="resultRate">-</span></div>
                         <div class="calc-result-item total"><span class="label">Неустойка</span><span class="value" id="resultPenalty">-</span></div>
-                        <div class="calc-result-item"><span class="label">Снижение по ст. 333 (до 2×)</span><span class="value" id="result333">-</span></div>
+                        <div class="calc-result-item"><span class="label">Снижение по ст. 333 (до 2x)</span><span class="value" id="result333">-</span></div>
                     </div>
                 </div>
             </div>
@@ -791,12 +807,39 @@
         <!-- Comparison Tab -->
         <div id="comparison-panel" class="tab-panel">
             <div style="padding: 25px;">
-                <h2 class="section-title">Сравнение результатов моделей</h2>
-                <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Загрузите документы на вкладке "Генератор" и запустите сравнение.</p>
-                <button class="btn btn-primary" onclick="runComparison()" id="compareBtn">Сравнить все модели</button>
+                <h2 class="section-title">Сравнение результатов</h2>
+                <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Выберите два результата из истории для сравнения.</p>
+
+                <div class="comparison-selectors" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div>
+                        <label style="font-size: 13px; font-weight: 500; color: #1E3A5F; display: block; margin-bottom: 8px;">Результат 1</label>
+                        <select id="compare1" class="comparison-select" onchange="updateComparisonPreview(1)">
+                            <option value="">-- Выберите из истории --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size: 13px; font-weight: 500; color: #1E3A5F; display: block; margin-bottom: 8px;">Результат 2</label>
+                        <select id="compare2" class="comparison-select" onchange="updateComparisonPreview(2)">
+                            <option value="">-- Выберите из истории --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="runHistoryComparison()" id="compareBtn">Сравнить выбранные</button>
+
+                <div id="noHistoryMessage" style="text-align: center; padding: 40px; color: #8899A6; display: none;">
+                    Нет сохранённых результатов в истории. Сгенерируйте аргументы на вкладке "Генератор".
+                </div>
+
                 <div id="comparisonContainer" class="comparison-container" style="margin-top: 20px;">
-                    <div class="comparison-column"><div class="comparison-header">Gemini 2.5 Pro <span class="time-badge" id="time-gemini"></span></div><div class="comparison-content" id="content-gemini">Ожидание...</div></div>
-                    <div class="comparison-column"><div class="comparison-header">Claude Sonnet 4 <span class="time-badge" id="time-claude"></span></div><div class="comparison-content" id="content-claude">Ожидание...</div></div>
+                    <div class="comparison-column">
+                        <div class="comparison-header" id="header-1">Результат 1</div>
+                        <div class="comparison-content" id="content-1">Выберите результат из списка выше</div>
+                    </div>
+                    <div class="comparison-column">
+                        <div class="comparison-header" id="header-2">Результат 2</div>
+                        <div class="comparison-content" id="content-2">Выберите результат из списка выше</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -841,7 +884,7 @@
         let stats = JSON.parse(localStorage.getItem('generationStats') || '{"total":0,"times":[],"models":{}}');
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadRates(); loadHistory(); loadTemplates(); updateStats(); loadDraft();
+            loadRates(); loadHistory(); loadTemplates(); updateStats(); loadDraft(); loadComparisonSelectors();
             setInterval(saveDraft, 30000);
             document.getElementById('calcEndDate').value = new Date().toISOString().split('T')[0];
         });
@@ -942,7 +985,8 @@
                     const clickHandler = isImage
                         ? `onclick="openImagePreview('${objectUrl}', '${file.name.replace(/'/g, "\\'")}'); event.stopPropagation();"`
                         : '';
-                    return `<div class="file-item"><div class="file-preview" ${clickHandler}>${preview}</div><div class="file-info"><div class="file-name" title="${file.name}">${file.name}</div><div class="file-size">${formatFileSize(file.size)}</div></div><button class="remove-file" onclick="removeFile('${docType}', ${i})" title="Удалить файл">✕</button></div>`;
+                    const clickableClass = isImage ? 'clickable' : '';
+                    return `<div class="file-item"><div class="file-preview ${clickableClass}" ${clickHandler}>${preview}</div><div class="file-info"><div class="file-name" title="${file.name}">${file.name}</div><div class="file-size">${formatFileSize(file.size)}</div></div><button class="remove-file" onclick="removeFile('${docType}', ${i})" title="Удалить файл">✕</button></div>`;
                 }).join('');
                 listEl.innerHTML = header + items;
                 uploadArea.classList.add('has-file');
@@ -1260,31 +1304,73 @@
             } catch (error) { hideProgress(); errorBox.textContent = '❌ ' + error.message; errorBox.classList.add('active'); output.style.display = 'block'; } finally { analyzeBtn.disabled = false; }
         }
 
-        async function runComparison() {
-            if (!lastInputData && !document.getElementById('claimText').value && claimFiles.length === 0) { alert('Сначала загрузите документы'); return; }
-            if (!lastInputData) {
-                let finalClaimText = document.getElementById('claimText').value;
-                if (claimFiles.length > 0) finalClaimText = await processAllFiles(claimFiles, () => {});
-                lastInputData = { claim_text: finalClaimText, response_text: document.getElementById('responseText').value, user_comments: document.getElementById('userComments').value };
+        // Comparison functions - compare results from history
+        function loadComparisonSelectors() {
+            const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
+            const select1 = document.getElementById('compare1');
+            const select2 = document.getElementById('compare2');
+            const noHistoryMsg = document.getElementById('noHistoryMessage');
+            const container = document.getElementById('comparisonContainer');
+
+            if (history.length < 2) {
+                noHistoryMsg.style.display = 'block';
+                container.classList.remove('active');
+                select1.innerHTML = '<option value="">-- Недостаточно результатов --</option>';
+                select2.innerHTML = '<option value="">-- Недостаточно результатов --</option>';
+                return;
             }
+
+            noHistoryMsg.style.display = 'none';
+
+            const options = history.map((item, i) => {
+                const date = formatDate(item.date);
+                const model = item.model ? (MODEL_NAMES[item.model] || item.model) : 'Неизвестно';
+                const preview = item.preview.substring(0, 50) + '...';
+                return `<option value="${i}">${date} - ${model}: ${preview}</option>`;
+            }).join('');
+
+            select1.innerHTML = '<option value="">-- Выберите из истории --</option>' + options;
+            select2.innerHTML = '<option value="">-- Выберите из истории --</option>' + options;
+        }
+
+        function updateComparisonPreview(num) {
+            const select = document.getElementById(`compare${num}`);
+            const index = select.value;
+            const header = document.getElementById(`header-${num}`);
+            const content = document.getElementById(`content-${num}`);
+
+            if (index === '') {
+                header.textContent = `Результат ${num}`;
+                content.textContent = 'Выберите результат из списка выше';
+                return;
+            }
+
+            const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
+            const item = history[index];
+            if (item) {
+                const model = item.model ? (MODEL_NAMES[item.model] || item.model) : 'Неизвестно';
+                header.textContent = `${formatDate(item.date)} - ${model}`;
+                content.textContent = item.text;
+            }
+        }
+
+        function runHistoryComparison() {
+            const index1 = document.getElementById('compare1').value;
+            const index2 = document.getElementById('compare2').value;
+
+            if (index1 === '' || index2 === '') {
+                alert('Выберите оба результата для сравнения');
+                return;
+            }
+
+            if (index1 === index2) {
+                alert('Выберите разные результаты для сравнения');
+                return;
+            }
+
             document.getElementById('comparisonContainer').classList.add('active');
-            document.getElementById('compareBtn').disabled = true;
-            const models = ['gemini-2.5-pro', 'claude-sonnet-4-20250514'];
-            const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
-            const promises = models.map(async (model, i) => {
-                const containerId = i === 0 ? 'gemini' : 'claude';
-                document.getElementById(`content-${containerId}`).textContent = 'Генерация...';
-                document.getElementById(`time-${containerId}`).textContent = '';
-                const startTime = Date.now();
-                try {
-                    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: model }) });
-                    const result = await response.json();
-                    document.getElementById(`content-${containerId}`).textContent = result.arguments_text || result.error;
-                    document.getElementById(`time-${containerId}`).textContent = `${((Date.now() - startTime) / 1000).toFixed(1)} сек.`;
-                } catch (err) { document.getElementById(`content-${containerId}`).textContent = 'Ошибка: ' + err.message; }
-            });
-            await Promise.all(promises);
-            document.getElementById('compareBtn').disabled = false;
+            updateComparisonPreview(1);
+            updateComparisonPreview(2);
         }
 
         function toggleEdit() {
@@ -1359,7 +1445,11 @@
             const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
             const section = document.getElementById('historySection');
             const list = document.getElementById('historyList');
-            if (history.length === 0) { section.style.display = 'none'; return; }
+            if (history.length === 0) {
+                section.style.display = 'none';
+                loadComparisonSelectors();
+                return;
+            }
             section.style.display = 'block';
             list.innerHTML = history.map((item, i) => `
                 <div class="history-item">
@@ -1370,6 +1460,7 @@
                     <button class="delete-history" onclick="event.stopPropagation(); deleteFromHistory(${i})" title="Удалить">✕</button>
                 </div>
             `).join('');
+            loadComparisonSelectors();
         }
 
         function deleteFromHistory(index) {
@@ -1474,6 +1565,21 @@
             document.getElementById('resultRate').textContent = rateLabel;
             document.getElementById('resultPenalty').textContent = penalty.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) + ' ₽';
             document.getElementById('result333').textContent = penalty333.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) + ' ₽';
+        }
+
+        function toggleCustomRate() {
+            const rateType = document.getElementById('calcRateType').value;
+            document.getElementById('customRateRow').style.display = rateType === 'contract' ? 'block' : 'none';
+        }
+
+        function clearCalculator() {
+            document.getElementById('calcDebt').value = '';
+            document.getElementById('calcStartDate').value = '';
+            document.getElementById('calcEndDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('calcRateType').value = 'contract';
+            document.getElementById('calcCustomRate').value = '';
+            document.getElementById('customRateRow').style.display = 'block';
+            document.getElementById('calcResult').style.display = 'none';
         }
 
         function updateStatsAfterGeneration(model, time) {
