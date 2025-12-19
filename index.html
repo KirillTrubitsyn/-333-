@@ -233,10 +233,40 @@
             font-size: 13px;
             color: #1E3A5F;
         }
-        .file-item .file-info { flex: 1; }
-        .file-item .file-name { font-size: 12px; color: #2D3748; font-weight: 500; }
+        .file-item .file-info { flex: 1; min-width: 0; }
+        .file-item .file-name { font-size: 12px; color: #2D3748; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .file-item .file-size { font-size: 10px; color: #8899A6; }
-        .file-item .remove-file { color: #E53E3E; cursor: pointer; font-size: 16px; padding: 4px; }
+        .file-item .remove-file {
+            color: #E53E3E;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: none;
+            border: none;
+            opacity: 0.7;
+            transition: opacity 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+        .file-item .remove-file:hover { opacity: 1; background: #FED7D7; }
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-size: 11px;
+            color: #8899A6;
+        }
+        .clear-all-files {
+            color: #E53E3E;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 11px;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .clear-all-files:hover { background: #FED7D7; }
         .upload-buttons { display: flex; gap: 8px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
         .upload-btn {
             padding: 8px 16px;
@@ -475,10 +505,53 @@
         /* History */
         .history-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #E1E8ED; }
         .history-section h4 { font-size: 13px; color: #1E3A5F; margin-bottom: 10px; }
-        .history-item { background: #F4F7F9; border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; font-size: 12px; }
+        .history-item {
+            background: #F4F7F9;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            position: relative;
+        }
         .history-item:hover { background: #E8EEF2; }
+        .history-item .history-content { flex: 1; }
         .history-item .date { color: #8899A6; font-size: 11px; }
         .history-item .preview { color: #4A5568; margin-top: 4px; }
+        .history-item .delete-history {
+            color: #E53E3E;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            opacity: 0;
+            transition: opacity 0.2s, background 0.2s;
+            flex-shrink: 0;
+        }
+        .history-item:hover .delete-history { opacity: 1; }
+        .history-item .delete-history:hover { background: #FED7D7; }
+        .history-section .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .history-section .history-header h4 { margin: 0; }
+        .history-section .clear-all-history {
+            font-size: 11px;
+            color: #E53E3E;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .history-section .clear-all-history:hover { background: #FED7D7; }
         .footer { background: #F4F7F9; padding: 12px; text-align: center; border-top: 1px solid #E1E8ED; }
         .footer .author { font-size: 11px; color: #8899A6; }
         /* Modal */
@@ -608,7 +681,10 @@
                     </div>
 
                     <div class="history-section" id="historySection" style="display: none;">
-                        <h4>📜 История запросов</h4>
+                        <div class="history-header">
+                            <h4>📜 История запросов</h4>
+                            <button class="clear-all-history" onclick="clearAllHistory()">Очистить всё</button>
+                        </div>
                         <div id="historyList"></div>
                     </div>
                 </div>
@@ -846,9 +922,18 @@
             const files = docType === 'claim' ? claimFiles : responseFiles;
             const listEl = document.getElementById(`${docType}-file-list`);
             const uploadArea = document.getElementById(`${docType}-upload-area`);
-            if (files.length === 0) { listEl.innerHTML = ''; uploadArea.classList.remove('has-file'); }
-            else {
-                listEl.innerHTML = files.map((file, i) => {
+            if (files.length === 0) {
+                listEl.innerHTML = '';
+                uploadArea.classList.remove('has-file');
+            } else {
+                const totalSize = files.reduce((sum, f) => sum + f.size, 0);
+                const header = `
+                    <div class="file-list-header">
+                        <span>${files.length} файл(ов), ${formatFileSize(totalSize)}</span>
+                        <button class="clear-all-files" onclick="clearAllFiles('${docType}')">Удалить все</button>
+                    </div>
+                `;
+                const items = files.map((file, i) => {
                     const isImage = file.type.startsWith('image/');
                     const objectUrl = isImage ? URL.createObjectURL(file) : '';
                     const preview = isImage
@@ -857,10 +942,20 @@
                     const clickHandler = isImage
                         ? `onclick="openImagePreview('${objectUrl}', '${file.name.replace(/'/g, "\\'")}'); event.stopPropagation();"`
                         : '';
-                    return `<div class="file-item"><div class="file-preview" ${clickHandler}>${preview}</div><div class="file-info"><div class="file-name">${file.name}</div><div class="file-size">${formatFileSize(file.size)}</div></div><span class="remove-file" onclick="removeFile('${docType}', ${i})">✕</span></div>`;
+                    return `<div class="file-item"><div class="file-preview" ${clickHandler}>${preview}</div><div class="file-info"><div class="file-name" title="${file.name}">${file.name}</div><div class="file-size">${formatFileSize(file.size)}</div></div><button class="remove-file" onclick="removeFile('${docType}', ${i})" title="Удалить файл">✕</button></div>`;
                 }).join('');
+                listEl.innerHTML = header + items;
                 uploadArea.classList.add('has-file');
             }
+        }
+
+        function clearAllFiles(docType) {
+            if (docType === 'claim') {
+                claimFiles = [];
+            } else {
+                responseFiles = [];
+            }
+            updateFileList(docType);
         }
 
         function openImagePreview(src, filename) {
@@ -1266,7 +1361,31 @@
             const list = document.getElementById('historyList');
             if (history.length === 0) { section.style.display = 'none'; return; }
             section.style.display = 'block';
-            list.innerHTML = history.map((item, i) => `<div class="history-item" onclick="loadFromHistory(${i})"><div class="date">${formatDate(item.date)} ${item.model ? '• ' + (MODEL_NAMES[item.model] || item.model) : ''}</div><div class="preview">${item.preview}...</div></div>`).join('');
+            list.innerHTML = history.map((item, i) => `
+                <div class="history-item">
+                    <div class="history-content" onclick="loadFromHistory(${i})">
+                        <div class="date">${formatDate(item.date)} ${item.model ? '• ' + (MODEL_NAMES[item.model] || item.model) : ''}</div>
+                        <div class="preview">${item.preview}...</div>
+                    </div>
+                    <button class="delete-history" onclick="event.stopPropagation(); deleteFromHistory(${i})" title="Удалить">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function deleteFromHistory(index) {
+            const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
+            if (index >= 0 && index < history.length) {
+                history.splice(index, 1);
+                localStorage.setItem('argumentsHistory', JSON.stringify(history));
+                loadHistory();
+            }
+        }
+
+        function clearAllHistory() {
+            if (confirm('Удалить всю историю запросов?')) {
+                localStorage.removeItem('argumentsHistory');
+                loadHistory();
+            }
         }
 
         function loadFromHistory(index) {
