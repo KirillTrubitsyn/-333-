@@ -714,7 +714,7 @@
                         <div class="model-options">
                             <div class="model-option selected" data-model="gemini-3-pro-preview" onclick="selectModel(this)">
                                 <div class="model-name">Gemini 3 Pro</div>
-                                <div class="model-desc">Google, think deeper</div>
+                                <div class="model-desc">Google, глубокий анализ</div>
                             </div>
                             <div class="model-option" data-model="claude-sonnet-4-5-20250929" onclick="selectModel(this)">
                                 <div class="model-name">Claude Sonnet 4.5</div>
@@ -1458,8 +1458,8 @@
                     const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
 
                     setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
+                    if (!response.ok) { const errText = await response.text(); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                     const result = await response.json();
-                    if (!response.ok) throw new Error(result.error || 'Ошибка');
 
                     argumentsText = result.arguments_text;
                     actualModel = result.model_used || modelToUse;
@@ -1516,8 +1516,8 @@
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
                 const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) });
                 setProgress(3, 80, 'Получение ответа...', MODEL_NAMES[modelToUse], { showDetails: true, filesTotal: 0, filesProcessed: 0, stage: 'Формирование ответа' });
+                if (!response.ok) { const errText = await response.text(); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Ошибка');
 
                 setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
                 const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
