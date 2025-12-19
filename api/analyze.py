@@ -248,7 +248,7 @@ def call_openai(system_prompt: str, user_prompt: str, model_id: str) -> str:
             ]
             response = client.chat.completions.create(
                 model=model_id,
-                max_tokens=8192,
+                max_completion_tokens=8192,
                 messages=messages
             )
 
