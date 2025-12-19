@@ -1,13 +1,10 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import os
-import base64
 from api.rate_limiter import get_client_ip, check_rate_limit, send_rate_limit_error, add_rate_limit_headers
 
-# API Keys
+# API Key
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # Gemini setup
 import google.generativeai as genai
@@ -52,8 +49,11 @@ def get_mime_type(filename: str) -> str:
     return mime_types.get(extension, 'image/png')
 
 
-def ocr_with_gemini(image_base64: str, filename: str) -> str:
-    """OCR через Gemini Vision"""
+def extract_text_from_image(image_base64: str, filename: str) -> str:
+    """Извлечение текста из изображения через Gemini (быстрый OCR)"""
+    if not GEMINI_API_KEY:
+        raise Exception("Gemini API не настроен")
+
     model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
     mime_type = get_mime_type(filename)
@@ -79,70 +79,6 @@ def ocr_with_gemini(image_base64: str, filename: str) -> str:
         raise Exception("Не удалось распознать текст")
 
 
-def ocr_with_claude(image_base64: str, filename: str) -> str:
-    """OCR через Claude Vision"""
-    import anthropic
-    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=25.0)
-
-    mime_type = get_mime_type(filename)
-    if ',' in image_base64:
-        image_base64 = image_base64.split(',')[1]
-
-    message = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=4096,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "image", "source": {"type": "base64", "media_type": mime_type, "data": image_base64}},
-                {"type": "text", "text": OCR_PROMPT}
-            ]
-        }]
-    )
-    return message.content[0].text
-
-
-def ocr_with_openai(image_base64: str, filename: str) -> str:
-    """OCR через OpenAI Vision"""
-    from openai import OpenAI
-    client = OpenAI(api_key=OPENAI_API_KEY, timeout=25.0)
-
-    mime_type = get_mime_type(filename)
-    if ',' in image_base64:
-        image_base64 = image_base64.split(',')[1]
-
-    response = client.chat.completions.create(
-        model="gpt-4o",
-        max_tokens=4096,
-        messages=[{
-            "role": "user",
-            "content": [
-                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
-                {"type": "text", "text": OCR_PROMPT}
-            ]
-        }]
-    )
-    return response.choices[0].message.content
-
-
-def extract_text_from_image(image_base64: str, filename: str, model: str = "gemini") -> str:
-    """Извлечение текста из изображения через выбранную модель"""
-
-    if model.startswith('claude'):
-        if not ANTHROPIC_API_KEY:
-            raise Exception("Claude API не настроен")
-        return ocr_with_claude(image_base64, filename)
-    elif model.startswith('gpt'):
-        if not OPENAI_API_KEY:
-            raise Exception("OpenAI API не настроен")
-        return ocr_with_openai(image_base64, filename)
-    else:
-        # Gemini по умолчанию
-        if not GEMINI_API_KEY:
-            raise Exception("Gemini API не настроен")
-        return ocr_with_gemini(image_base64, filename)
-
-
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
@@ -159,7 +95,6 @@ class handler(BaseHTTPRequestHandler):
 
             image_base64 = data.get('image', '')
             filename = data.get('filename', 'image.png')
-            model = data.get('model', 'gemini')
 
             if not image_base64:
                 self.send_response(400)
@@ -169,8 +104,8 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"error": "Изображение не предоставлено"}).encode())
                 return
 
-            # Распознаём текст через выбранную модель
-            extracted_text = extract_text_from_image(image_base64, filename, model)
+            # OCR всегда через Gemini (самый быстрый)
+            extracted_text = extract_text_from_image(image_base64, filename)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
