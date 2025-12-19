@@ -195,7 +195,7 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
     try:
         message = client.messages.create(
             model=model_id,
-            max_tokens=4096,
+            max_tokens=2048,
             system=system_prompt,
             messages=[
                 {"role": "user", "content": user_prompt}
@@ -228,7 +228,7 @@ def call_openai(system_prompt: str, user_prompt: str, model_id: str) -> str:
     try:
         response = client.chat.completions.create(
             model=model_id,
-            max_completion_tokens=3072,
+            max_completion_tokens=2048,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
