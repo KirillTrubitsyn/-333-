@@ -2,7 +2,7 @@
   "version": 2,
   "functions": {
     "api/analyze.py": {
-      "maxDuration": 180,
+      "maxDuration": 300,
       "memory": 1024
     },
     "api/rates.py": {
