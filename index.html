@@ -1542,7 +1542,14 @@
                     saveToHistory(argumentsText, lastUsedModel);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
-            } catch (error) { hideProgress(); errorBox.textContent = '❌ ' + error.message; errorBox.classList.add('active'); output.style.display = 'block'; } finally { analyzeBtn.disabled = false; }
+            } catch (error) {
+                hideProgress();
+                let msg = error.message;
+                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил. Claude API перегружен — попробуйте Gemini или повторите через минуту.';
+                errorBox.textContent = '❌ ' + msg;
+                errorBox.classList.add('active');
+                output.style.display = 'block';
+            } finally { analyzeBtn.disabled = false; }
         }
 
         function regenerateWithDifferentModel() {
@@ -1603,7 +1610,14 @@
                     saveToHistory(result.arguments_text, lastUsedModel);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
-            } catch (error) { hideProgress(); errorBox.textContent = '❌ ' + error.message; errorBox.classList.add('active'); output.style.display = 'block'; } finally { analyzeBtn.disabled = false; }
+            } catch (error) {
+                hideProgress();
+                let msg = error.message;
+                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил. Claude API перегружен — попробуйте Gemini или повторите через минуту.';
+                errorBox.textContent = '❌ ' + msg;
+                errorBox.classList.add('active');
+                output.style.display = 'block';
+            } finally { analyzeBtn.disabled = false; }
         }
 
         // Comparison functions - compare results from history
