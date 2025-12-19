@@ -795,7 +795,6 @@
                         <button class="btn btn-secondary btn-sm" onclick="toggleEdit()">✏️ Редактировать</button>
                         <button class="btn btn-primary btn-sm" onclick="copyToClipboard()">📋 Копировать</button>
                         <button class="btn btn-success btn-sm" onclick="downloadDocx()">📥 DOCX</button>
-                        <button class="btn btn-info btn-sm" onclick="downloadPdf()">📕 PDF</button>
                         <button class="btn btn-warning btn-sm" onclick="regenerateWithDifferentModel()">🔄 Другая модель</button>
                         <button class="btn btn-secondary btn-sm" onclick="saveAsTemplate()">💾 Шаблон</button>
                     </div>
@@ -945,8 +944,6 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -1649,82 +1646,6 @@
             }
             const doc = new Document({ sections: [{ properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } }, children }] });
             saveAs(await Packer.toBlob(doc), generateFileName('docx'));
-        }
-
-        async function downloadPdf() {
-            const { jsPDF } = window.jspdf;
-            const text = document.getElementById('output').textContent;
-
-            // Create styled HTML container
-            const tempDiv = document.createElement('div');
-            tempDiv.style.cssText = `
-                position: absolute;
-                left: -9999px;
-                top: 0;
-                width: 170mm;
-                padding: 0;
-                background: white;
-                font-family: 'Times New Roman', serif;
-                font-size: 12pt;
-                line-height: 1.5;
-                color: #000;
-            `;
-
-            // Format text with proper paragraphs (like DOCX)
-            const lines = text.split('\n');
-            for (const line of lines) {
-                const trimmed = line.trim();
-                const p = document.createElement('p');
-                p.style.margin = '0 0 8pt 0';
-                p.style.textAlign = 'justify';
-
-                const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
-                const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
-
-                if (!trimmed) {
-                    p.innerHTML = '&nbsp;';
-                } else if (isMainHeading) {
-                    p.style.fontWeight = 'bold';
-                    p.style.fontSize = '13pt';
-                    p.style.marginTop = '14pt';
-                    p.style.marginBottom = '8pt';
-                    p.style.color = '#1a3a6e';
-                    p.textContent = trimmed;
-                } else if (isSubHeading) {
-                    p.style.fontWeight = 'bold';
-                    p.style.fontSize = '12pt';
-                    p.style.marginTop = '10pt';
-                    p.style.color = '#1a3a6e';
-                    p.textContent = trimmed;
-                } else {
-                    p.textContent = trimmed;
-                }
-                tempDiv.appendChild(p);
-            }
-
-            document.body.appendChild(tempDiv);
-
-            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-
-            const pdfFileName = generateFileName('pdf');
-            try {
-                await pdf.html(tempDiv, {
-                    callback: function(doc) {
-                        doc.save(pdfFileName);
-                    },
-                    x: 20,
-                    y: 15,
-                    width: 170,
-                    windowWidth: tempDiv.scrollWidth,
-                    html2canvas: {
-                        scale: 0.265,
-                        useCORS: true,
-                        logging: false
-                    }
-                });
-            } finally {
-                document.body.removeChild(tempDiv);
-            }
         }
 
         function saveToHistory(fullText, model) {
