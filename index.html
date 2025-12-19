@@ -500,10 +500,12 @@
         .comparison-content { padding: 15px; max-height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
         /* Calculator */
         .calculator-section { padding: 25px; }
-        .calc-form { background: white; border: 1px solid #E1E8ED; border-radius: 8px; padding: 20px; max-width: 500px; }
+        .calculator-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: start; }
+        @media (max-width: 900px) { .calculator-layout { grid-template-columns: 1fr; } }
+        .calc-form { background: white; border: 1px solid #E1E8ED; border-radius: 8px; padding: 20px; }
         .calc-row { margin-bottom: 15px; }
         .calc-row label { display: block; font-size: 13px; font-weight: 500; color: #1E3A5F; margin-bottom: 6px; }
-        .calc-result { background: #F0F5FF; border: 1px solid #C3D4E8; border-radius: 8px; padding: 20px; margin-top: 20px; }
+        .calc-result { background: #F0F5FF; border: 1px solid #C3D4E8; border-radius: 8px; padding: 20px; }
         .calc-result h4 { font-size: 14px; color: #1E3A5F; margin-bottom: 15px; }
         .calc-result-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #E1E8ED; }
         .calc-result-item:last-child { border-bottom: none; }
@@ -667,15 +669,10 @@
                         <div id="claim-file-tab" class="tab-content active">
                             <div class="file-upload" id="claim-upload-area" onclick="document.getElementById('claimFiles').click()">
                                 <input type="file" id="claimFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'claim')" onclick="event.stopPropagation()">
-                                <input type="file" id="claimCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'claim')" style="display:none">
                                 <div class="upload-icon">📄</div>
                                 <div class="upload-text">DOCX, PDF, TXT, изображения (макс. 10 МБ)</div>
                             </div>
                             <div id="claim-file-list" class="file-list"></div>
-                            <div class="upload-buttons">
-                                <button type="button" class="upload-btn" onclick="document.getElementById('claimFiles').click()">📁 Выбрать файлы</button>
-                                <button type="button" class="upload-btn" onclick="document.getElementById('claimCamera').click()">📷 Сделать фото</button>
-                            </div>
                         </div>
                         <div id="claim-text-tab" class="tab-content">
                             <textarea id="claimText" placeholder="Вставьте текст иска..."></textarea>
@@ -691,15 +688,10 @@
                         <div id="response-file-tab" class="tab-content active">
                             <div class="file-upload" id="response-upload-area" onclick="document.getElementById('responseFiles').click()">
                                 <input type="file" id="responseFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'response')" onclick="event.stopPropagation()">
-                                <input type="file" id="responseCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'response')" style="display:none">
                                 <div class="upload-icon">📋</div>
                                 <div class="upload-text">Ходатайство о снижении</div>
                             </div>
                             <div id="response-file-list" class="file-list"></div>
-                            <div class="upload-buttons">
-                                <button type="button" class="upload-btn" onclick="document.getElementById('responseFiles').click()">📁 Выбрать файлы</button>
-                                <button type="button" class="upload-btn" onclick="document.getElementById('responseCamera').click()">📷 Сделать фото</button>
-                            </div>
                         </div>
                         <div id="response-text-tab" class="tab-content">
                             <textarea id="responseText" placeholder="Вставьте текст отзыва..."></textarea>
@@ -813,48 +805,50 @@
             <div class="calculator-section">
                 <h2 class="section-title">Калькулятор неустойки</h2>
 
-                <div class="calc-form">
-                    <div class="calc-row">
-                        <label>Сумма основного долга (руб.)</label>
-                        <input type="number" id="calcDebt" placeholder="1000000">
-                    </div>
-                    <div class="calc-row">
-                        <label>Дата начала просрочки</label>
-                        <input type="date" id="calcStartDate">
-                    </div>
-                    <div class="calc-row">
-                        <label>Дата окончания расчёта</label>
-                        <input type="date" id="calcEndDate">
-                    </div>
+                <div class="calculator-layout">
+                    <div class="calc-form">
+                        <div class="calc-row">
+                            <label>Сумма основного долга (руб.)</label>
+                            <input type="number" id="calcDebt" placeholder="1000000">
+                        </div>
+                        <div class="calc-row">
+                            <label>Дата начала просрочки</label>
+                            <input type="date" id="calcStartDate">
+                        </div>
+                        <div class="calc-row">
+                            <label>Дата окончания расчёта</label>
+                            <input type="date" id="calcEndDate">
+                        </div>
 
-                    <div style="margin: 20px 0 10px; padding-top: 15px; border-top: 1px solid #E1E8ED;">
-                        <label style="font-size: 13px; font-weight: 600; color: #1E3A5F;">Частичные платежи (если были)</label>
-                        <p style="font-size: 11px; color: #8899A6; margin: 4px 0 10px;">Добавьте даты и суммы частичного погашения долга</p>
-                    </div>
-                    <div id="paymentsList"></div>
-                    <button type="button" class="btn btn-secondary btn-sm" onclick="addPayment()" style="margin-top: 8px;">+ Добавить платёж</button>
+                        <div style="margin: 20px 0 10px; padding-top: 15px; border-top: 1px solid #E1E8ED;">
+                            <label style="font-size: 13px; font-weight: 600; color: #1E3A5F;">Частичные платежи (если были)</label>
+                            <p style="font-size: 11px; color: #8899A6; margin: 4px 0 10px;">Добавьте даты и суммы частичного погашения долга</p>
+                        </div>
+                        <div id="paymentsList"></div>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addPayment()" style="margin-top: 8px;">+ Добавить платёж</button>
 
-                    <div class="calc-row" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #E1E8ED;">
-                        <label>Ставка неустойки</label>
-                        <select id="calcRateType" onchange="toggleCustomRate()">
-                            <option value="contract">По договору (ввести)</option>
-                            <option value="395">Ст. 395 ГК (ключ. ставка)</option>
-                            <option value="double">2x ключевой ставки</option>
-                            <option value="01">0.1% в день</option>
-                            <option value="05">0.5% в день</option>
-                            <option value="1">1% в день</option>
-                        </select>
-                    </div>
-                    <div class="calc-row" id="customRateRow">
-                        <label>Ставка по договору (% годовых)</label>
-                        <input type="number" id="calcCustomRate" placeholder="36">
-                    </div>
+                        <div class="calc-row" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #E1E8ED;">
+                            <label>Ставка неустойки</label>
+                            <select id="calcRateType" onchange="toggleCustomRate()">
+                                <option value="contract">По договору (ввести)</option>
+                                <option value="395">Ст. 395 ГК (ключ. ставка)</option>
+                                <option value="double">2x ключевой ставки</option>
+                                <option value="01">0.1% в день</option>
+                                <option value="05">0.5% в день</option>
+                                <option value="1">1% в день</option>
+                            </select>
+                        </div>
+                        <div class="calc-row" id="customRateRow">
+                            <label>Ставка по договору (% годовых)</label>
+                            <input type="number" id="calcCustomRate" placeholder="36">
+                        </div>
 
-                    <div id="calcError" style="display: none; background: #FFF5F5; border: 1px solid #FC8181; border-radius: 6px; padding: 10px; margin-top: 15px; color: #C53030; font-size: 13px;"></div>
+                        <div id="calcError" style="display: none; background: #FFF5F5; border: 1px solid #FC8181; border-radius: 6px; padding: 10px; margin-top: 15px; color: #C53030; font-size: 13px;"></div>
 
-                    <div class="button-group" style="margin-top: 15px;">
-                        <button class="btn btn-primary" onclick="calculatePenalty()">Рассчитать</button>
-                        <button class="btn btn-secondary" onclick="clearCalculator()">Очистить</button>
+                        <div class="button-group" style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="calculatePenalty()">Рассчитать</button>
+                            <button class="btn btn-secondary" onclick="clearCalculator()">Очистить</button>
+                        </div>
                     </div>
 
                     <div class="calc-result" id="calcResult" style="display: none;">
@@ -1625,7 +1619,7 @@
                     output.classList.remove('output-empty');
                     output.style.display = 'block';
                     actionButtons.style.display = 'flex';
-                    saveToHistory(argumentsText, lastUsedModel);
+                    saveToHistory(argumentsText, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
             } catch (error) {
@@ -1695,7 +1689,7 @@
                     output.classList.remove('output-empty');
                     output.style.display = 'block';
                     actionButtons.style.display = 'flex';
-                    saveToHistory(result.arguments_text, lastUsedModel);
+                    saveToHistory(result.arguments_text, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
             } catch (error) {
@@ -1821,9 +1815,9 @@
             saveAs(await Packer.toBlob(doc), generateFileName('docx'));
         }
 
-        function saveToHistory(fullText, model) {
+        function saveToHistory(fullText, model, time) {
             const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
-            history.unshift({ date: new Date().toISOString(), preview: fullText.substring(0, 100).replace(/[\r\n]+/g, ' '), text: fullText, model });
+            history.unshift({ date: new Date().toISOString(), preview: fullText.substring(0, 100).replace(/[\r\n]+/g, ' '), text: fullText, model, time });
             if (history.length > 10) history.pop();
             localStorage.setItem('argumentsHistory', JSON.stringify(history));
             loadHistory();
@@ -1842,7 +1836,7 @@
             list.innerHTML = history.map((item, i) => `
                 <div class="history-item">
                     <div class="history-content" onclick="loadFromHistory(${i})">
-                        <div class="date">${formatDate(item.date)} ${item.model ? '• ' + (MODEL_NAMES[item.model] || item.model) : ''}</div>
+                        <div class="date">${formatDate(item.date)} ${item.model ? '• ' + (MODEL_NAMES[item.model] || item.model) : ''}${item.time ? ' • ⏱️ ' + item.time + ' сек.' : ''}</div>
                         <div class="preview">${item.preview}...</div>
                     </div>
                     <button class="delete-history" onclick="event.stopPropagation(); deleteFromHistory(${i})" title="Удалить">✕</button>
@@ -1877,7 +1871,9 @@
                 output.classList.remove('output-empty');
                 output.style.display = 'block';
                 document.getElementById('actionButtons').style.display = 'flex';
-                if (lastUsedModel) { document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel; document.getElementById('outputBadges').style.display = 'block'; }
+                document.getElementById('modelBadge').textContent = '📜 ' + (MODEL_NAMES[lastUsedModel] || lastUsedModel || 'История');
+                document.getElementById('timeBadge').textContent = history[index].time ? `⏱️ ${history[index].time} сек.` : '';
+                document.getElementById('outputBadges').style.display = 'block';
             }
         }
 
