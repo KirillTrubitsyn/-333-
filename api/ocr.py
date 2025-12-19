@@ -2,6 +2,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import base64
+from api.rate_limiter import get_client_ip, check_rate_limit, send_rate_limit_error, add_rate_limit_headers
 
 # API Keys
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -145,6 +146,13 @@ def extract_text_from_image(image_base64: str, filename: str, model: str = "gemi
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
+            # Rate limiting: 3 запроса в минуту с одного IP
+            client_ip = get_client_ip(self.headers)
+            allowed, rate_info = check_rate_limit(client_ip)
+            if not allowed:
+                send_rate_limit_error(self, rate_info)
+                return
+
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
@@ -167,6 +175,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
+            add_rate_limit_headers(self, rate_info)
             self.end_headers()
             self.wfile.write(json.dumps({"text": extracted_text, "filename": filename}).encode())
 

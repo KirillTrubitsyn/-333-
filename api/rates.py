@@ -4,6 +4,7 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timedelta
 import xml.etree.ElementTree as ET
+from api.rate_limiter import get_client_ip, check_rate_limit, send_rate_limit_error, add_rate_limit_headers
 
 
 def fetch_cbr_rates():
@@ -61,6 +62,13 @@ def get_current_rate(rates):
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
         try:
+            # Rate limiting: 3 запроса в минуту с одного IP
+            client_ip = get_client_ip(self.headers)
+            allowed, rate_info = check_rate_limit(client_ip)
+            if not allowed:
+                send_rate_limit_error(self, rate_info)
+                return
+
             rates = fetch_cbr_rates()
             current_rate = get_current_rate(rates)
 
@@ -68,6 +76,7 @@ class handler(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Cache-Control', 'public, max-age=3600')  # Кэш на 1 час
+            add_rate_limit_headers(self, rate_info)
             self.end_headers()
 
             # Возвращаем текущую ставку и историю

@@ -609,8 +609,10 @@
             border-radius: 4px;
         }
         .history-section .clear-all-history:hover { background: #FED7D7; }
-        .footer { background: #F4F7F9; padding: 12px; text-align: center; border-top: 1px solid #E1E8ED; }
+        .footer { background: #F4F7F9; padding: 12px; text-align: center; border-top: 1px solid #E1E8ED; display: flex; justify-content: center; align-items: center; gap: 20px; flex-wrap: wrap; }
         .footer .author { font-size: 11px; color: #8899A6; }
+        .clear-cache-btn { background: none; border: 1px solid #E1E8ED; padding: 4px 10px; border-radius: 6px; font-size: 11px; color: #8899A6; cursor: pointer; transition: all 0.2s; }
+        .clear-cache-btn:hover { background: #FED7D7; border-color: #FC8181; color: #C53030; }
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
         .modal.active { display: flex; }
@@ -921,7 +923,10 @@
             </div>
         </div>
 
-        <div class="footer"><div class="author">Разработчик: Кирилл Трубицын</div></div>
+        <div class="footer">
+            <div class="author">Разработчик: Кирилл Трубицын</div>
+            <button class="clear-cache-btn" onclick="clearAllCache()" title="Очистить кэш результатов">🗑️ Очистить кэш</button>
+        </div>
     </div>
 
     <!-- Modal -->
@@ -1044,11 +1049,66 @@
 
         let cachedRates = [], currentRate = null, lastResult = '', selectedModel = 'gemini-3-pro-preview', lastUsedModel = '', lastInputData = null;
         let claimFiles = [], responseFiles = [], isEditing = false, generationStartTime = null;
+
+        // Кэш Object URLs для предотвращения утечки памяти
+        const objectUrlCache = new Map();
+
+        function getOrCreateObjectUrl(file) {
+            // Используем имя + размер + lastModified как ключ
+            const key = `${file.name}_${file.size}_${file.lastModified}`;
+            if (!objectUrlCache.has(key)) {
+                objectUrlCache.set(key, URL.createObjectURL(file));
+            }
+            return objectUrlCache.get(key);
+        }
+
+        function revokeFileObjectUrl(file) {
+            const key = `${file.name}_${file.size}_${file.lastModified}`;
+            if (objectUrlCache.has(key)) {
+                URL.revokeObjectURL(objectUrlCache.get(key));
+                objectUrlCache.delete(key);
+            }
+        }
+
+        function revokeAllObjectUrls(files) {
+            files.forEach(file => revokeFileObjectUrl(file));
+        }
         let stats = JSON.parse(localStorage.getItem('generationStats') || '{"total":0,"times":[],"models":{}}');
+
+        // === Fetch с таймаутом для предотвращения зависания ===
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 60000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error(`⏱️ Запрос превысил ${timeoutMs/1000} сек. Попробуйте ещё раз или выберите другую модель.`);
+                }
+                throw error;
+            }
+        }
 
         // === Кэширование результатов для экономии API ===
         const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа
-        const CACHE_PREFIX = 'gen_cache_';
+        const CACHE_VERSION = 'v3';  // Увеличить при изменении логики генерации
+        const CACHE_PREFIX = `gen_cache_${CACHE_VERSION}_`;
+
+        // Очистка старых версий кэша при загрузке
+        (function cleanOldVersionCache() {
+            Object.keys(localStorage).forEach(k => {
+                if (k.startsWith('gen_cache_') && !k.startsWith(CACHE_PREFIX)) {
+                    localStorage.removeItem(k);
+                }
+            });
+        })();
 
         async function hashText(text) {
             const encoder = new TextEncoder();
@@ -1091,6 +1151,17 @@
             }
         }
 
+        function clearAllCache() {
+            const keys = Object.keys(localStorage).filter(k => k.startsWith('gen_cache_'));
+            const count = keys.length;
+            keys.forEach(k => localStorage.removeItem(k));
+            if (count > 0) {
+                alert(`Кэш очищен! Удалено записей: ${count}`);
+            } else {
+                alert('Кэш уже пуст');
+            }
+        }
+
         // === Сжатие текста для экономии токенов ===
         function compressText(text) {
             if (!text) return '';
@@ -1126,7 +1197,7 @@
 
         async function loadRates() {
             try {
-                const response = await fetch('/api/rates');
+                const response = await fetchWithTimeout('/api/rates', {}, 10000);
                 if (response.ok) {
                     const data = await response.json();
                     cachedRates = data.history || [];
@@ -1173,6 +1244,9 @@
         }
 
         function removeFile(docType, index) {
+            const files = docType === 'claim' ? claimFiles : responseFiles;
+            const file = files[index];
+            if (file) revokeFileObjectUrl(file);  // Освобождаем память
             if (docType === 'claim') claimFiles.splice(index, 1); else responseFiles.splice(index, 1);
             updateFileList(docType);
         }
@@ -1200,7 +1274,7 @@
                 `;
                 const items = files.map((file, i) => {
                     const isImage = file.type.startsWith('image/');
-                    const objectUrl = isImage ? URL.createObjectURL(file) : '';
+                    const objectUrl = isImage ? getOrCreateObjectUrl(file) : '';
                     const preview = isImage
                         ? `<img src="${objectUrl}"><span class="zoom-hint">🔍</span>`
                         : getFileIcon(file.name);
@@ -1217,8 +1291,10 @@
 
         function clearAllFiles(docType) {
             if (docType === 'claim') {
+                revokeAllObjectUrls(claimFiles);  // Освобождаем память
                 claimFiles = [];
             } else {
+                revokeAllObjectUrls(responseFiles);  // Освобождаем память
                 responseFiles = [];
             }
             updateFileList(docType);
@@ -1312,11 +1388,11 @@
                 const imageData = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
 
                 try {
-                    const response = await fetch('/api/ocr', {
+                    const response = await fetchWithTimeout('/api/ocr', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg`, model: selectedModel })
-                    });
+                    }, 30000);
                     const result = await response.json();
                     if (response.ok && result.text) {
                         texts.push(`--- Страница ${i} ---\n${result.text}`);
@@ -1335,7 +1411,7 @@
         async function recognizeImage(file) {
             let imageData = await fileToBase64(file);
             if (file.size > 2 * 1024 * 1024) imageData = await compressImage(imageData);
-            const response = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name, model: selectedModel }) });
+            const response = await fetchWithTimeout('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name, model: selectedModel }) }, 30000);
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Ошибка OCR');
             return result.text;
@@ -1520,7 +1596,8 @@
                     });
 
                     const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})` : '';
-                    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
+                    const apiTimeout = modelToUse.includes('opus') ? 120000 : 60000;  // Opus: 2 мин, остальные: 1 мин
+                    const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) }, apiTimeout);
 
                     setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
                     if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
@@ -1597,7 +1674,8 @@
 
             try {
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
-                const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) });
+                const apiTimeout = modelToUse.includes('opus') ? 120000 : 60000;  // Opus: 2 мин, остальные: 1 мин
+                const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) }, apiTimeout);
                 setProgress(3, 80, 'Получение ответа...', MODEL_NAMES[modelToUse], { showDetails: true, filesTotal: 0, filesProcessed: 0, stage: 'Формирование ответа' });
                 if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
