@@ -1,6 +1,7 @@
 from http.server import BaseHTTPRequestHandler
 import json
 import os
+import re
 
 # API Keys
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -29,6 +30,22 @@ def get_anthropic_client():
         import anthropic
         anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     return anthropic_client
+
+
+def compress_text(text: str) -> str:
+    """Сжатие текста для экономии токенов"""
+    if not text:
+        return ''
+    # Нормализация переносов строк
+    text = text.replace('\r\n', '\n')
+    # Удаление множественных пустых строк
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    # Удаление множественных пробелов
+    text = re.sub(r'[ \t]{2,}', ' ', text)
+    # Удаление пробелов в начале и конце строк
+    text = re.sub(r'^[ \t]+', '', text, flags=re.MULTILINE)
+    text = re.sub(r'[ \t]+$', '', text, flags=re.MULTILINE)
+    return text.strip()
 
 
 def build_system_prompt(rates_info: str) -> str:
@@ -121,7 +138,7 @@ def clean_markdown(text: str) -> str:
 def call_gemini(system_prompt: str, user_prompt: str) -> str:
     """Вызов Gemini API"""
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-pro",
+        model_name="gemini-3-pro-preview",
         system_instruction=system_prompt
     )
 
@@ -176,14 +193,14 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
 
-            claim_text = data.get('claim_text', '')
-            response_text = data.get('response_text', '')
-            other_documents = data.get('other_documents', '')
-            user_comments = data.get('user_comments', '')
+            claim_text = compress_text(data.get('claim_text', ''))
+            response_text = compress_text(data.get('response_text', ''))
+            other_documents = compress_text(data.get('other_documents', ''))
+            user_comments = data.get('user_comments', '').strip()
             rates_info = data.get('rates_info', 'Ставки ЦБ недоступны')
-            model = data.get('model', 'gemini-2.5-pro')
+            model = data.get('model', 'gemini-3-pro-preview')
 
-            if not claim_text.strip():
+            if not claim_text:
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
