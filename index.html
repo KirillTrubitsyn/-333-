@@ -12,23 +12,20 @@
     <meta name="theme-color" content="#1E3A5F">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(145deg, #E8EEF2 0%, #D4DEE7 50%, #C5D3E0 100%);
             min-height: 100vh;
             padding: 20px;
         }
-
         .container {
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
             background: #FAFBFC;
             border-radius: 16px;
             box-shadow: 0 20px 60px rgba(30, 58, 95, 0.15);
             overflow: hidden;
         }
-
         .header {
             background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%);
             color: white;
@@ -36,7 +33,6 @@
             text-align: center;
             position: relative;
         }
-
         .header::after {
             content: '';
             position: absolute;
@@ -46,16 +42,43 @@
             height: 3px;
             background: linear-gradient(90deg, #C9A227, #E8C547, #C9A227);
         }
-
         .header h1 { font-size: 24px; margin-bottom: 8px; font-weight: 600; }
         .header p { font-size: 14px; opacity: 0.85; }
-
+        .stats-bar {
+            background: #F4F7F9;
+            padding: 8px 20px;
+            display: flex;
+            gap: 20px;
+            font-size: 11px;
+            color: #8899A6;
+            border-bottom: 1px solid #E1E8ED;
+        }
+        .stat-item { display: flex; align-items: center; gap: 6px; }
+        .stat-value { font-weight: 600; color: #1E3A5F; }
+        .tabs-container {
+            display: flex;
+            background: #F4F7F9;
+            border-bottom: 1px solid #E1E8ED;
+        }
+        .main-tab {
+            padding: 12px 24px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 14px;
+            font-weight: 500;
+            color: #4A5568;
+            border-bottom: 3px solid transparent;
+        }
+        .main-tab:hover { color: #1E3A5F; }
+        .main-tab.active { color: #1E3A5F; border-bottom-color: #C9A227; background: #FAFBFC; }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
         .main-content {
             display: grid;
             grid-template-columns: 1fr 1fr;
             min-height: 600px;
         }
-
         .form-section {
             padding: 25px;
             background: #F4F7F9;
@@ -63,14 +86,12 @@
             overflow-y: auto;
             max-height: 80vh;
         }
-
         .output-section {
             padding: 25px;
             background: #FAFBFC;
             overflow-y: auto;
             max-height: 80vh;
         }
-
         .section-title {
             font-size: 16px;
             font-weight: 600;
@@ -79,7 +100,6 @@
             padding-bottom: 10px;
             border-bottom: 2px solid #C9A227;
         }
-
         .document-block {
             background: white;
             border: 1px solid #E1E8ED;
@@ -87,20 +107,16 @@
             padding: 15px;
             margin-bottom: 15px;
         }
-
         .document-block h3 {
             font-size: 14px;
             font-weight: 600;
             color: #1E3A5F;
             margin-bottom: 12px;
         }
-
         .document-block h3 .required { color: #C9A227; }
         .document-block h3 .optional { font-weight: 400; font-size: 11px; color: #8899A6; }
         .document-block h3 .file-limit { font-weight: 400; font-size: 11px; color: #8899A6; margin-left: 8px; }
-
         .input-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-
         .tab-btn {
             padding: 6px 12px;
             border: 1px solid #E1E8ED;
@@ -110,16 +126,9 @@
             font-size: 12px;
             color: #4A5568;
         }
-
-        .tab-btn.active {
-            background: #1E3A5F;
-            color: white;
-            border-color: #1E3A5F;
-        }
-
+        .tab-btn.active { background: #1E3A5F; color: white; border-color: #1E3A5F; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-
         .file-upload {
             border: 2px dashed #CBD5E0;
             border-radius: 8px;
@@ -127,18 +136,39 @@
             text-align: center;
             cursor: pointer;
             background: #FAFBFC;
-            position: relative;
         }
-
         .file-upload:hover { border-color: #C9A227; background: #FFFDF5; }
         .file-upload.has-file { border-color: #48BB78; background: #F0FFF4; }
         .file-upload input[type="file"] { display: none; }
         .file-upload .upload-icon { font-size: 24px; margin-bottom: 8px; }
         .file-upload .upload-text { font-size: 12px; color: #8899A6; }
-        .file-upload .file-list { font-size: 12px; color: #48BB78; font-weight: 600; margin-top: 8px; text-align: left; }
-        .file-upload .file-item { padding: 4px 0; display: flex; align-items: center; gap: 6px; }
-        .file-upload .file-item .remove-file { color: #E53E3E; cursor: pointer; font-size: 14px; }
-
+        .file-list { margin-top: 10px; }
+        .file-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px;
+            background: #F4F7F9;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+        .file-item .file-preview {
+            width: 40px;
+            height: 40px;
+            border-radius: 4px;
+            object-fit: cover;
+            background: #E1E8ED;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            overflow: hidden;
+        }
+        .file-item .file-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .file-item .file-info { flex: 1; }
+        .file-item .file-name { font-size: 12px; color: #2D3748; font-weight: 500; }
+        .file-item .file-size { font-size: 10px; color: #8899A6; }
+        .file-item .remove-file { color: #E53E3E; cursor: pointer; font-size: 16px; padding: 4px; }
         .upload-buttons { display: flex; gap: 8px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
         .upload-btn {
             padding: 8px 16px;
@@ -153,8 +183,7 @@
             gap: 6px;
         }
         .upload-btn:hover { background: #F4F7F9; border-color: #C9A227; }
-
-        textarea, select {
+        textarea, select, input[type="text"], input[type="number"], input[type="date"] {
             width: 100%;
             padding: 12px;
             border: 1px solid #E1E8ED;
@@ -162,15 +191,8 @@
             font-size: 13px;
             font-family: inherit;
         }
-
-        textarea {
-            resize: vertical;
-            min-height: 120px;
-        }
-
-        textarea:focus, select:focus { outline: none; border-color: #C9A227; }
-        textarea::placeholder { color: #A0AEC0; }
-
+        textarea { resize: vertical; min-height: 120px; }
+        textarea:focus, select:focus, input:focus { outline: none; border-color: #C9A227; }
         .model-selector {
             background: white;
             border: 1px solid #E1E8ED;
@@ -178,34 +200,19 @@
             padding: 15px;
             margin-bottom: 15px;
         }
-
-        .model-selector h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #1E3A5F;
-            margin-bottom: 12px;
-        }
-
-        .model-options {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
+        .model-selector h3 { font-size: 14px; font-weight: 600; color: #1E3A5F; margin-bottom: 12px; }
+        .model-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .model-option {
             padding: 10px;
             border: 2px solid #E1E8ED;
             border-radius: 6px;
             cursor: pointer;
             text-align: center;
-            transition: all 0.2s;
         }
-
         .model-option:hover { border-color: #C9A227; }
         .model-option.selected { border-color: #1E3A5F; background: #F0F5FF; }
         .model-option .model-name { font-weight: 600; font-size: 13px; color: #1E3A5F; }
         .model-option .model-desc { font-size: 11px; color: #8899A6; margin-top: 4px; }
-
         .rates-info {
             background: #F0F5FF;
             border: 1px solid #C3D4E8;
@@ -213,11 +220,8 @@
             padding: 12px;
             margin-bottom: 15px;
         }
-
         .rates-info h4 { font-size: 13px; color: #1E3A5F; margin-bottom: 8px; }
-
-        .button-group { display: flex; gap: 10px; margin-top: 15px; }
-
+        .button-group { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         .btn {
             padding: 12px 20px;
             border: none;
@@ -226,24 +230,64 @@
             font-weight: 600;
             cursor: pointer;
             flex: 1;
+            min-width: 100px;
         }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%);
-            color: white;
-        }
-
+        .btn-primary { background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%); color: white; }
         .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30, 58, 95, 0.3); }
         .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-secondary { background: #E8EEF2; color: #4A5568; }
         .btn-secondary:hover { background: #D4DEE7; }
-
         .btn-success { background: #48BB78; color: white; }
-        .btn-success:hover { background: #38A169; }
-
         .btn-warning { background: #ED8936; color: white; }
-        .btn-warning:hover { background: #DD6B20; }
-
+        .btn-info { background: #4299E1; color: white; }
+        .btn-sm { padding: 8px 12px; font-size: 12px; }
+        /* Progress Bar */
+        .progress-container {
+            display: none;
+            background: white;
+            border: 1px solid #E1E8ED;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .progress-container.active { display: block; }
+        .progress-steps { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .progress-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            position: relative;
+        }
+        .progress-step::after {
+            content: '';
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            width: 100%;
+            height: 2px;
+            background: #E1E8ED;
+        }
+        .progress-step:last-child::after { display: none; }
+        .progress-step .step-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #E1E8ED;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            z-index: 1;
+        }
+        .progress-step.active .step-icon { background: #C9A227; color: white; }
+        .progress-step.completed .step-icon { background: #48BB78; color: white; }
+        .progress-step .step-label { font-size: 11px; color: #8899A6; margin-top: 8px; text-align: center; }
+        .progress-step.active .step-label { color: #1E3A5F; font-weight: 600; }
+        .progress-bar-track { height: 6px; background: #E1E8ED; border-radius: 3px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #C9A227, #E8C547); width: 0%; transition: width 0.3s; }
+        .progress-text { text-align: center; font-size: 13px; color: #4A5568; margin-top: 10px; }
+        .progress-time { text-align: center; font-size: 11px; color: #8899A6; margin-top: 5px; }
         .output-box {
             background: white;
             border: 1px solid #E1E8ED;
@@ -255,9 +299,8 @@
             color: #2D3748;
             white-space: pre-wrap;
         }
-
         .output-empty { color: #A0AEC0; font-style: italic; text-align: center; padding-top: 80px; }
-
+        .output-editable:focus { outline: 2px solid #C9A227; }
         .model-badge {
             display: inline-block;
             background: #E8EEF2;
@@ -268,27 +311,17 @@
             font-weight: 600;
             margin-bottom: 10px;
         }
-
-        .action-buttons { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
-        .action-buttons .btn { flex: 1; min-width: 120px; }
-
-        .loading { display: none; text-align: center; padding: 40px; }
-        .loading.active { display: block; }
-
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #E1E8ED;
-            border-top: 3px solid #C9A227;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+        .time-badge {
+            display: inline-block;
+            background: #F0FFF4;
+            color: #276749;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            margin-left: 8px;
         }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .loading-text { color: #4A5568; font-size: 14px; }
-
+        .action-buttons { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
+        .action-buttons .btn { flex: 1; min-width: 100px; }
         .error-box {
             background: #FFF5F5;
             border: 1px solid #FC8181;
@@ -298,51 +331,60 @@
             margin-bottom: 15px;
             display: none;
         }
-
         .error-box.active { display: block; }
-
-        .history-section {
-            margin-top: 20px;
-            padding-top: 15px;
-            border-top: 1px solid #E1E8ED;
-        }
-
+        /* Comparison */
+        .comparison-container { display: none; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .comparison-container.active { display: grid; }
+        .comparison-column { background: white; border: 1px solid #E1E8ED; border-radius: 8px; overflow: hidden; }
+        .comparison-header { background: #F4F7F9; padding: 12px; border-bottom: 1px solid #E1E8ED; font-weight: 600; font-size: 13px; color: #1E3A5F; }
+        .comparison-content { padding: 15px; max-height: 400px; overflow-y: auto; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
+        /* Calculator */
+        .calculator-section { padding: 25px; }
+        .calc-form { background: white; border: 1px solid #E1E8ED; border-radius: 8px; padding: 20px; max-width: 500px; }
+        .calc-row { margin-bottom: 15px; }
+        .calc-row label { display: block; font-size: 13px; font-weight: 500; color: #1E3A5F; margin-bottom: 6px; }
+        .calc-result { background: #F0F5FF; border: 1px solid #C3D4E8; border-radius: 8px; padding: 20px; margin-top: 20px; }
+        .calc-result h4 { font-size: 14px; color: #1E3A5F; margin-bottom: 15px; }
+        .calc-result-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #E1E8ED; }
+        .calc-result-item:last-child { border-bottom: none; }
+        .calc-result-item .label { color: #4A5568; }
+        .calc-result-item .value { font-weight: 600; color: #1E3A5F; }
+        .calc-result-item.total { font-size: 16px; }
+        .calc-result-item.total .value { color: #C9A227; }
+        /* Templates */
+        .templates-section { padding: 25px; }
+        .template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .template-card { background: white; border: 1px solid #E1E8ED; border-radius: 8px; padding: 15px; cursor: pointer; }
+        .template-card:hover { border-color: #C9A227; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .template-card h4 { font-size: 14px; color: #1E3A5F; margin-bottom: 8px; }
+        .template-card p { font-size: 12px; color: #8899A6; line-height: 1.5; }
+        .template-card .template-tags { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+        .template-tag { background: #F0F5FF; color: #1E3A5F; padding: 2px 8px; border-radius: 10px; font-size: 10px; }
+        /* History */
+        .history-section { margin-top: 20px; padding-top: 15px; border-top: 1px solid #E1E8ED; }
         .history-section h4 { font-size: 13px; color: #1E3A5F; margin-bottom: 10px; }
-
-        .history-item {
-            background: #F4F7F9;
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 8px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
+        .history-item { background: #F4F7F9; border-radius: 6px; padding: 10px; margin-bottom: 8px; cursor: pointer; font-size: 12px; }
         .history-item:hover { background: #E8EEF2; }
         .history-item .date { color: #8899A6; font-size: 11px; }
         .history-item .preview { color: #4A5568; margin-top: 4px; }
-
-        .footer {
-            background: #F4F7F9;
-            padding: 12px;
-            text-align: center;
-            border-top: 1px solid #E1E8ED;
-        }
-
+        .footer { background: #F4F7F9; padding: 12px; text-align: center; border-top: 1px solid #E1E8ED; }
         .footer .author { font-size: 11px; color: #8899A6; }
-
-        .processing-status {
-            font-size: 11px;
-            color: #8899A6;
-            margin-top: 8px;
-            font-style: italic;
-        }
-
+        /* Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal-header { padding: 20px; border-bottom: 1px solid #E1E8ED; display: flex; justify-content: space-between; align-items: center; }
+        .modal-header h3 { font-size: 18px; color: #1E3A5F; }
+        .modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #8899A6; }
+        .modal-body { padding: 20px; }
+        .modal-footer { padding: 20px; border-top: 1px solid #E1E8ED; display: flex; gap: 10px; justify-content: flex-end; }
         @media (max-width: 968px) {
             .main-content { grid-template-columns: 1fr; }
             .form-section, .output-section { max-height: none; border-right: none; }
             .form-section { border-bottom: 1px solid #E1E8ED; }
             .model-options { grid-template-columns: 1fr; }
+            .comparison-container { grid-template-columns: 1fr; }
+            .stats-bar { flex-wrap: wrap; }
         }
     </style>
 </head>
@@ -353,170 +395,242 @@
             <p>Создание аргументов для возражений по ст. 333 ГК РФ</p>
         </div>
 
-        <div class="main-content">
-            <div class="form-section">
-                <h2 class="section-title">Исходные документы</h2>
+        <div class="stats-bar">
+            <div class="stat-item">📊 Генераций: <span class="stat-value" id="totalGenerations">0</span></div>
+            <div class="stat-item">⏱️ Ср. время: <span class="stat-value" id="avgTime">-</span></div>
+            <div class="stat-item">🏆 Популярная модель: <span class="stat-value" id="topModel">-</span></div>
+        </div>
 
-                <div class="document-block">
-                    <h3>Иск о взыскании неустойки <span class="required">*</span> <span class="file-limit">(до 3 файлов)</span></h3>
-                    <div class="input-tabs">
-                        <button class="tab-btn active" onclick="switchTab('claim', 'file', this)">Файлы</button>
-                        <button class="tab-btn" onclick="switchTab('claim', 'text', this)">Текст</button>
-                    </div>
-                    <div id="claim-file-tab" class="tab-content active">
-                        <div class="file-upload" id="claim-upload-area">
-                            <input type="file" id="claimFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'claim')">
-                            <input type="file" id="claimCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'claim')" style="display:none">
-                            <div class="upload-icon">📄</div>
-                            <div class="upload-text">DOCX, PDF, TXT, изображения</div>
+        <div class="tabs-container">
+            <button class="main-tab active" onclick="switchMainTab('generator')">Генератор</button>
+            <button class="main-tab" onclick="switchMainTab('calculator')">Калькулятор</button>
+            <button class="main-tab" onclick="switchMainTab('templates')">Шаблоны</button>
+            <button class="main-tab" onclick="switchMainTab('comparison')">Сравнение</button>
+        </div>
+
+        <!-- Generator Tab -->
+        <div id="generator-panel" class="tab-panel active">
+            <div class="main-content">
+                <div class="form-section">
+                    <h2 class="section-title">Исходные документы</h2>
+
+                    <div class="document-block">
+                        <h3>Иск о взыскании неустойки <span class="required">*</span> <span class="file-limit">(до 3 файлов)</span></h3>
+                        <div class="input-tabs">
+                            <button class="tab-btn active" onclick="switchTab('claim', 'file', this)">Файлы</button>
+                            <button class="tab-btn" onclick="switchTab('claim', 'text', this)">Текст</button>
+                        </div>
+                        <div id="claim-file-tab" class="tab-content active">
+                            <div class="file-upload" id="claim-upload-area">
+                                <input type="file" id="claimFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'claim')">
+                                <input type="file" id="claimCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'claim')" style="display:none">
+                                <div class="upload-icon">📄</div>
+                                <div class="upload-text">DOCX, PDF, TXT, изображения (макс. 10 МБ)</div>
+                            </div>
                             <div id="claim-file-list" class="file-list"></div>
+                            <div class="upload-buttons">
+                                <button type="button" class="upload-btn" onclick="document.getElementById('claimFiles').click()">📁 Выбрать файлы</button>
+                                <button type="button" class="upload-btn" onclick="document.getElementById('claimCamera').click()">📷 Сделать фото</button>
+                            </div>
                         </div>
-                        <div class="upload-buttons">
-                            <button type="button" class="upload-btn" onclick="document.getElementById('claimFiles').click()">
-                                📁 Выбрать файлы
-                            </button>
-                            <button type="button" class="upload-btn" onclick="document.getElementById('claimCamera').click()">
-                                📷 Сделать фото
-                            </button>
+                        <div id="claim-text-tab" class="tab-content">
+                            <textarea id="claimText" placeholder="Вставьте текст иска..."></textarea>
                         </div>
-                        <div id="claim-processing" class="processing-status"></div>
                     </div>
-                    <div id="claim-text-tab" class="tab-content">
-                        <textarea id="claimText" placeholder="Вставьте текст иска..."></textarea>
-                    </div>
-                </div>
 
-                <div class="document-block">
-                    <h3>Отзыв ответчика <span class="optional">(опционально)</span> <span class="file-limit">(до 3 файлов)</span></h3>
-                    <div class="input-tabs">
-                        <button class="tab-btn active" onclick="switchTab('response', 'file', this)">Файлы</button>
-                        <button class="tab-btn" onclick="switchTab('response', 'text', this)">Текст</button>
-                    </div>
-                    <div id="response-file-tab" class="tab-content active">
-                        <div class="file-upload" id="response-upload-area">
-                            <input type="file" id="responseFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'response')">
-                            <input type="file" id="responseCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'response')" style="display:none">
-                            <div class="upload-icon">📋</div>
-                            <div class="upload-text">Ходатайство о снижении</div>
+                    <div class="document-block">
+                        <h3>Отзыв ответчика <span class="optional">(опционально)</span> <span class="file-limit">(до 3 файлов)</span></h3>
+                        <div class="input-tabs">
+                            <button class="tab-btn active" onclick="switchTab('response', 'file', this)">Файлы</button>
+                            <button class="tab-btn" onclick="switchTab('response', 'text', this)">Текст</button>
+                        </div>
+                        <div id="response-file-tab" class="tab-content active">
+                            <div class="file-upload" id="response-upload-area">
+                                <input type="file" id="responseFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'response')">
+                                <input type="file" id="responseCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'response')" style="display:none">
+                                <div class="upload-icon">📋</div>
+                                <div class="upload-text">Ходатайство о снижении</div>
+                            </div>
                             <div id="response-file-list" class="file-list"></div>
+                            <div class="upload-buttons">
+                                <button type="button" class="upload-btn" onclick="document.getElementById('responseFiles').click()">📁 Выбрать файлы</button>
+                                <button type="button" class="upload-btn" onclick="document.getElementById('responseCamera').click()">📷 Сделать фото</button>
+                            </div>
                         </div>
-                        <div class="upload-buttons">
-                            <button type="button" class="upload-btn" onclick="document.getElementById('responseFiles').click()">
-                                📁 Выбрать файлы
-                            </button>
-                            <button type="button" class="upload-btn" onclick="document.getElementById('responseCamera').click()">
-                                📷 Сделать фото
-                            </button>
-                        </div>
-                        <div id="response-processing" class="processing-status"></div>
-                    </div>
-                    <div id="response-text-tab" class="tab-content">
-                        <textarea id="responseText" placeholder="Вставьте текст отзыва..."></textarea>
-                    </div>
-                </div>
-
-                <div class="document-block">
-                    <h3>Пояснения <span class="optional">(опционально)</span></h3>
-                    <textarea id="userComments" placeholder="Дополнительная информация, акценты, пожелания..." style="min-height: 80px;"></textarea>
-                </div>
-
-                <div class="model-selector">
-                    <h3>Выбор AI модели</h3>
-                    <div class="model-options">
-                        <div class="model-option selected" data-model="gemini-2.5-pro" onclick="selectModel(this)">
-                            <div class="model-name">Gemini 2.5 Pro</div>
-                            <div class="model-desc">Google, быстрый</div>
-                        </div>
-                        <div class="model-option" data-model="claude-sonnet-4-20250514" onclick="selectModel(this)">
-                            <div class="model-name">Claude Sonnet 4</div>
-                            <div class="model-desc">Anthropic, баланс</div>
-                        </div>
-                        <div class="model-option" data-model="claude-opus-4-5-20251101" onclick="selectModel(this)">
-                            <div class="model-name">Claude Opus 4.5</div>
-                            <div class="model-desc">Anthropic, мощный</div>
+                        <div id="response-text-tab" class="tab-content">
+                            <textarea id="responseText" placeholder="Вставьте текст отзыва..."></textarea>
                         </div>
                     </div>
+
+                    <div class="document-block">
+                        <h3>Пояснения <span class="optional">(опционально)</span></h3>
+                        <textarea id="userComments" placeholder="Дополнительная информация, акценты, пожелания..." style="min-height: 80px;"></textarea>
+                    </div>
+
+                    <div class="model-selector">
+                        <h3>Выбор AI модели</h3>
+                        <div class="model-options">
+                            <div class="model-option selected" data-model="gemini-2.5-pro" onclick="selectModel(this)">
+                                <div class="model-name">Gemini 2.5 Pro</div>
+                                <div class="model-desc">Google, быстрый</div>
+                            </div>
+                            <div class="model-option" data-model="claude-sonnet-4-20250514" onclick="selectModel(this)">
+                                <div class="model-name">Claude Sonnet 4</div>
+                                <div class="model-desc">Anthropic, баланс</div>
+                            </div>
+                            <div class="model-option" data-model="claude-opus-4-5-20251101" onclick="selectModel(this)">
+                                <div class="model-name">Claude Opus 4.5</div>
+                                <div class="model-desc">Anthropic, мощный</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rates-info">
+                        <h4>📊 Ключевая ставка ЦБ РФ</h4>
+                        <div id="ratesContainer">Загрузка...</div>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="analyzeBtn" class="btn btn-primary" onclick="generateArguments()">Сгенерировать</button>
+                        <button class="btn btn-secondary" onclick="clearForm()">Очистить</button>
+                    </div>
+
+                    <div class="history-section" id="historySection" style="display: none;">
+                        <h4>📜 История запросов</h4>
+                        <div id="historyList"></div>
+                    </div>
                 </div>
 
-                <div class="rates-info">
-                    <h4>📊 Ключевая ставка ЦБ РФ</h4>
-                    <div id="ratesContainer">Загрузка...</div>
-                </div>
+                <div class="output-section">
+                    <h2 class="section-title">Аргументы против применения ст. 333 ГК РФ</h2>
 
-                <div class="button-group">
-                    <button id="analyzeBtn" class="btn btn-primary" onclick="generateArguments()">
-                        Сгенерировать
-                    </button>
-                    <button class="btn btn-secondary" onclick="clearForm()">Очистить</button>
-                </div>
+                    <div id="progressContainer" class="progress-container">
+                        <div class="progress-steps">
+                            <div class="progress-step" data-step="1"><div class="step-icon">📂</div><div class="step-label">Чтение файлов</div></div>
+                            <div class="progress-step" data-step="2"><div class="step-icon">🔍</div><div class="step-label">Распознавание</div></div>
+                            <div class="progress-step" data-step="3"><div class="step-icon">🤖</div><div class="step-label">Генерация</div></div>
+                            <div class="progress-step" data-step="4"><div class="step-icon">✅</div><div class="step-label">Готово</div></div>
+                        </div>
+                        <div class="progress-bar-track"><div class="progress-bar-fill" id="progressFill"></div></div>
+                        <div class="progress-text" id="progressText">Подготовка...</div>
+                        <div class="progress-time" id="progressTime"></div>
+                    </div>
 
-                <div class="history-section" id="historySection" style="display: none;">
-                    <h4>📜 История запросов</h4>
-                    <div id="historyList"></div>
-                </div>
-            </div>
+                    <div id="errorBox" class="error-box"></div>
+                    <div id="outputBadges" style="display: none;"><span id="modelBadge" class="model-badge"></span><span id="timeBadge" class="time-badge"></span></div>
+                    <div id="output" class="output-box output-empty" contenteditable="false">Загрузите документы и нажмите «Сгенерировать»</div>
 
-            <div class="output-section">
-                <h2 class="section-title">Аргументы против применения ст. 333 ГК РФ</h2>
-
-                <div id="errorBox" class="error-box"></div>
-
-                <div id="loading" class="loading">
-                    <div class="spinner"></div>
-                    <div class="loading-text" id="loadingText">Генерация аргументов...</div>
-                </div>
-
-                <div id="modelBadge" class="model-badge" style="display: none;"></div>
-
-                <div id="output" class="output-box output-empty">
-                    Загрузите документы и нажмите «Сгенерировать»
-                </div>
-
-                <div id="actionButtons" class="action-buttons" style="display: none;">
-                    <button class="btn btn-primary" onclick="copyToClipboard()">📋 Копировать</button>
-                    <button class="btn btn-success" onclick="downloadDocx()">📥 DOCX</button>
-                    <button class="btn btn-warning" onclick="regenerateWithDifferentModel()">🔄 Другая модель</button>
+                    <div id="actionButtons" class="action-buttons" style="display: none;">
+                        <button class="btn btn-secondary btn-sm" onclick="toggleEdit()">✏️ Редактировать</button>
+                        <button class="btn btn-primary btn-sm" onclick="copyToClipboard()">📋 Копировать</button>
+                        <button class="btn btn-success btn-sm" onclick="downloadDocx()">📥 DOCX</button>
+                        <button class="btn btn-info btn-sm" onclick="downloadPdf()">📕 PDF</button>
+                        <button class="btn btn-warning btn-sm" onclick="regenerateWithDifferentModel()">🔄 Другая модель</button>
+                        <button class="btn btn-secondary btn-sm" onclick="saveAsTemplate()">💾 Шаблон</button>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="footer">
-            <div class="author">Разработчик: Кирилл Трубицын</div>
+        <!-- Calculator Tab -->
+        <div id="calculator-panel" class="tab-panel">
+            <div class="calculator-section">
+                <h2 class="section-title">Калькулятор неустойки</h2>
+                <div class="calc-form">
+                    <div class="calc-row"><label>Сумма долга (руб.)</label><input type="number" id="calcDebt" placeholder="1000000" oninput="calculatePenalty()"></div>
+                    <div class="calc-row"><label>Дата начала просрочки</label><input type="date" id="calcStartDate" oninput="calculatePenalty()"></div>
+                    <div class="calc-row"><label>Дата окончания</label><input type="date" id="calcEndDate" oninput="calculatePenalty()"></div>
+                    <div class="calc-row">
+                        <label>Ставка неустойки</label>
+                        <select id="calcRateType" onchange="calculatePenalty()">
+                            <option value="contract">По договору (ввести)</option>
+                            <option value="395">Ст. 395 ГК (ключ. ставка)</option>
+                            <option value="double">2× ключевой ставки</option>
+                            <option value="01">0.1% в день</option>
+                            <option value="05">0.5% в день</option>
+                            <option value="1">1% в день</option>
+                        </select>
+                    </div>
+                    <div class="calc-row" id="customRateRow"><label>Ставка по договору (% годовых)</label><input type="number" id="calcCustomRate" placeholder="36" oninput="calculatePenalty()"></div>
+                    <div class="calc-result" id="calcResult" style="display: none;">
+                        <h4>Результат расчёта</h4>
+                        <div class="calc-result-item"><span class="label">Сумма долга</span><span class="value" id="resultDebt">-</span></div>
+                        <div class="calc-result-item"><span class="label">Период просрочки</span><span class="value" id="resultDays">-</span></div>
+                        <div class="calc-result-item"><span class="label">Ставка</span><span class="value" id="resultRate">-</span></div>
+                        <div class="calc-result-item total"><span class="label">Неустойка</span><span class="value" id="resultPenalty">-</span></div>
+                        <div class="calc-result-item"><span class="label">Снижение по ст. 333 (до 2×)</span><span class="value" id="result333">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Templates Tab -->
+        <div id="templates-panel" class="tab-panel">
+            <div class="templates-section">
+                <h2 class="section-title">Шаблоны аргументов</h2>
+                <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Сохранённые успешные аргументы для типовых ситуаций.</p>
+                <div id="templateGrid" class="template-grid"></div>
+                <div id="noTemplates" style="text-align: center; padding: 40px; color: #8899A6;">Нет сохранённых шаблонов. Сгенерируйте аргументы и сохраните удачный результат.</div>
+            </div>
+        </div>
+
+        <!-- Comparison Tab -->
+        <div id="comparison-panel" class="tab-panel">
+            <div style="padding: 25px;">
+                <h2 class="section-title">Сравнение результатов моделей</h2>
+                <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Загрузите документы на вкладке "Генератор" и запустите сравнение.</p>
+                <button class="btn btn-primary" onclick="runComparison()" id="compareBtn">Сравнить все модели</button>
+                <div id="comparisonContainer" class="comparison-container" style="margin-top: 20px;">
+                    <div class="comparison-column"><div class="comparison-header">Gemini 2.5 Pro <span class="time-badge" id="time-gemini"></span></div><div class="comparison-content" id="content-gemini">Ожидание...</div></div>
+                    <div class="comparison-column"><div class="comparison-header">Claude Sonnet 4 <span class="time-badge" id="time-claude"></span></div><div class="comparison-content" id="content-claude">Ожидание...</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer"><div class="author">Разработчик: Кирилл Трубицын</div></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="templateModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header"><h3>Сохранить как шаблон</h3><button class="modal-close" onclick="closeTemplateModal()">×</button></div>
+            <div class="modal-body">
+                <div class="calc-row"><label>Название шаблона</label><input type="text" id="templateName" placeholder="Например: Просрочка поставки"></div>
+                <div class="calc-row"><label>Описание</label><textarea id="templateDesc" placeholder="Краткое описание..." style="min-height: 60px;"></textarea></div>
+                <div class="calc-row"><label>Теги (через запятую)</label><input type="text" id="templateTags" placeholder="поставка, товар, 333"></div>
+            </div>
+            <div class="modal-footer"><button class="btn btn-secondary" onclick="closeTemplateModal()">Отмена</button><button class="btn btn-primary" onclick="confirmSaveTemplate()">Сохранить</button></div>
         </div>
     </div>
 
-    <!-- Библиотеки -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <script>
-        // PDF.js worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        let cachedRates = [];
-        let currentRate = null;
-        let lastResult = '';
-        let selectedModel = 'gemini-2.5-pro';
-        let lastUsedModel = '';
-        let lastInputData = null;
+        const MAX_FILES = 3, MAX_FILE_SIZE = 10 * 1024 * 1024;
+        const MODEL_NAMES = {'gemini-2.5-pro': 'Gemini 2.5 Pro', 'claude-sonnet-4-20250514': 'Claude Sonnet 4', 'claude-opus-4-5-20251101': 'Claude Opus 4.5'};
 
-        // Хранилище файлов (до 3 на каждый тип)
-        const MAX_FILES = 3;
-        let claimFiles = [];
-        let responseFiles = [];
-
-        const MODEL_NAMES = {
-            'gemini-2.5-pro': 'Gemini 2.5 Pro',
-            'claude-sonnet-4-20250514': 'Claude Sonnet 4',
-            'claude-opus-4-5-20251101': 'Claude Opus 4.5'
-        };
+        let cachedRates = [], currentRate = null, lastResult = '', selectedModel = 'gemini-2.5-pro', lastUsedModel = '', lastInputData = null;
+        let claimFiles = [], responseFiles = [], isEditing = false, generationStartTime = null;
+        let stats = JSON.parse(localStorage.getItem('generationStats') || '{"total":0,"times":[],"models":{}}');
 
         document.addEventListener('DOMContentLoaded', () => {
-            loadRates();
-            loadHistory();
+            loadRates(); loadHistory(); loadTemplates(); updateStats(); loadDraft();
+            setInterval(saveDraft, 30000);
+            document.getElementById('calcEndDate').value = new Date().toISOString().split('T')[0];
         });
+
+        function switchMainTab(tabName) {
+            document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+            document.querySelector(`.main-tab[onclick="switchMainTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-panel`).classList.add('active');
+        }
 
         function selectModel(el) {
             document.querySelectorAll('.model-option').forEach(opt => opt.classList.remove('selected'));
@@ -531,33 +645,14 @@
                     const data = await response.json();
                     cachedRates = data.history || [];
                     currentRate = data.current;
-                    const container = document.getElementById('ratesContainer');
-
                     if (currentRate) {
-                        let html = `<div style="font-size: 24px; font-weight: 700; color: #1E3A5F;">${currentRate.key_rate}%</div>
-                            <div style="font-size: 11px; color: #8899A6;">с ${formatDate(currentRate.date_from)}</div>`;
-
-                        if (cachedRates.length > 1) {
-                            html += `<details style="margin-top: 8px;">
-                                <summary style="font-size: 11px; color: #8899A6; cursor: pointer;">История</summary>
-                                <div style="margin-top: 6px; font-size: 11px; color: #4A5568;">
-                                    ${cachedRates.slice(-5).reverse().map(r =>
-                                        `<div>с ${formatDate(r.date_from)}: ${r.key_rate}%</div>`
-                                    ).join('')}
-                                </div>
-                            </details>`;
-                        }
-                        container.innerHTML = html;
+                        document.getElementById('ratesContainer').innerHTML = `<div style="font-size: 24px; font-weight: 700; color: #1E3A5F;">${currentRate.key_rate}%</div><div style="font-size: 11px; color: #8899A6;">с ${formatDate(currentRate.date_from)}</div>`;
                     }
                 }
-            } catch (e) {
-                document.getElementById('ratesContainer').innerHTML = '<div style="color: #C53030;">Ошибка загрузки</div>';
-            }
+            } catch (e) { document.getElementById('ratesContainer').innerHTML = '<div style="color: #C53030;">Ошибка загрузки</div>'; }
         }
 
-        function formatDate(isoDate) {
-            return new Date(isoDate).toLocaleDateString('ru-RU');
-        }
+        function formatDate(d) { return new Date(d).toLocaleDateString('ru-RU'); }
 
         function switchTab(docType, tabType, btn) {
             btn.parentElement.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
@@ -570,71 +665,49 @@
         function handleMultiFileSelect(input, docType) {
             const files = Array.from(input.files);
             const currentFiles = docType === 'claim' ? claimFiles : responseFiles;
-
-            // Проверяем лимит
-            if (currentFiles.length + files.length > MAX_FILES) {
-                alert(`Максимум ${MAX_FILES} файла`);
-                return;
+            for (const file of files) {
+                if (currentFiles.length >= MAX_FILES) { alert(`Максимум ${MAX_FILES} файла`); break; }
+                if (file.size > MAX_FILE_SIZE) { alert(`Файл "${file.name}" слишком большой (макс. 10 МБ)`); continue; }
+                if (docType === 'claim') claimFiles.push(file); else responseFiles.push(file);
             }
-
-            // Добавляем файлы
-            files.forEach(file => {
-                if (docType === 'claim') {
-                    claimFiles.push(file);
-                } else {
-                    responseFiles.push(file);
-                }
-            });
-
             updateFileList(docType);
-            input.value = ''; // Очищаем input для повторного выбора
+            input.value = '';
         }
 
         function handleCameraCapture(input, docType) {
             if (input.files && input.files[0]) {
                 const currentFiles = docType === 'claim' ? claimFiles : responseFiles;
-
-                if (currentFiles.length >= MAX_FILES) {
-                    alert(`Максимум ${MAX_FILES} файла`);
-                    return;
-                }
-
+                if (currentFiles.length >= MAX_FILES) { alert(`Максимум ${MAX_FILES} файла`); return; }
                 const file = input.files[0];
-                if (docType === 'claim') {
-                    claimFiles.push(file);
-                } else {
-                    responseFiles.push(file);
-                }
-
+                if (file.size > MAX_FILE_SIZE) { alert(`Файл слишком большой`); return; }
+                if (docType === 'claim') claimFiles.push(file); else responseFiles.push(file);
                 updateFileList(docType);
             }
             input.value = '';
         }
 
         function removeFile(docType, index) {
-            if (docType === 'claim') {
-                claimFiles.splice(index, 1);
-            } else {
-                responseFiles.splice(index, 1);
-            }
+            if (docType === 'claim') claimFiles.splice(index, 1); else responseFiles.splice(index, 1);
             updateFileList(docType);
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes < 1024) return bytes + ' Б';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
         }
 
         function updateFileList(docType) {
             const files = docType === 'claim' ? claimFiles : responseFiles;
             const listEl = document.getElementById(`${docType}-file-list`);
             const uploadArea = document.getElementById(`${docType}-upload-area`);
-
-            if (files.length === 0) {
-                listEl.innerHTML = '';
-                uploadArea.classList.remove('has-file');
-            } else {
-                listEl.innerHTML = files.map((file, i) => `
-                    <div class="file-item">
-                        <span>${getFileIcon(file.name)} ${file.name}</span>
-                        <span class="remove-file" onclick="removeFile('${docType}', ${i})">✕</span>
-                    </div>
-                `).join('');
+            if (files.length === 0) { listEl.innerHTML = ''; uploadArea.classList.remove('has-file'); }
+            else {
+                listEl.innerHTML = files.map((file, i) => {
+                    const isImage = file.type.startsWith('image/');
+                    const preview = isImage ? `<img src="${URL.createObjectURL(file)}">` : getFileIcon(file.name);
+                    return `<div class="file-item"><div class="file-preview">${preview}</div><div class="file-info"><div class="file-name">${file.name}</div><div class="file-size">${formatFileSize(file.size)}</div></div><span class="remove-file" onclick="removeFile('${docType}', ${i})">✕</span></div>`;
+                }).join('');
                 uploadArea.classList.add('has-file');
             }
         }
@@ -647,44 +720,18 @@
             return '📄';
         }
 
-        // Чтение файлов разных форматов
-        async function readFileContent(file, statusEl) {
-            const fileName = file.name.toLowerCase();
-            const ext = fileName.split('.').pop();
-
-            // DOCX
-            if (ext === 'docx' || ext === 'doc') {
-                if (statusEl) statusEl.textContent = `Читаю ${file.name}...`;
-                return await readDocx(file);
-            }
-
-            // PDF
-            if (ext === 'pdf') {
-                if (statusEl) statusEl.textContent = `Извлекаю текст из ${file.name}...`;
-                return await readPdf(file);
-            }
-
-            // Изображения - OCR через API
-            if (['jpg', 'jpeg', 'png', 'heic'].includes(ext)) {
-                if (statusEl) statusEl.textContent = `Распознаю текст на ${file.name}...`;
-                return await recognizeImage(file);
-            }
-
-            // TXT и другие текстовые
+        async function readFileContent(file, statusCallback) {
+            const ext = file.name.toLowerCase().split('.').pop();
+            if (ext === 'docx' || ext === 'doc') { if (statusCallback) statusCallback(`Читаю ${file.name}...`); return await readDocx(file); }
+            if (ext === 'pdf') { if (statusCallback) statusCallback(`Извлекаю текст из ${file.name}...`); return await readPdf(file); }
+            if (['jpg', 'jpeg', 'png', 'heic'].includes(ext)) { if (statusCallback) statusCallback(`Распознаю текст на ${file.name}...`); return await recognizeImage(file); }
             return await readTextFile(file);
         }
 
         async function readDocx(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
-                        resolve(result.value);
-                    } catch (err) {
-                        reject(new Error('Ошибка чтения DOCX: ' + err.message));
-                    }
-                };
+                reader.onload = async (e) => { try { resolve((await mammoth.extractRawText({ arrayBuffer: e.target.result })).value); } catch (err) { reject(err); } };
                 reader.onerror = reject;
                 reader.readAsArrayBuffer(file);
             });
@@ -697,344 +744,259 @@
                     try {
                         const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
                         let text = '';
-
-                        for (let i = 1; i <= pdf.numPages; i++) {
-                            const page = await pdf.getPage(i);
-                            const content = await page.getTextContent();
-                            const pageText = content.items.map(item => item.str).join(' ');
-                            text += pageText + '\n\n';
-                        }
-
+                        for (let i = 1; i <= pdf.numPages; i++) { const page = await pdf.getPage(i); const content = await page.getTextContent(); text += content.items.map(item => item.str).join(' ') + '\n\n'; }
                         resolve(text.trim());
-                    } catch (err) {
-                        reject(new Error('Ошибка чтения PDF: ' + err.message));
-                    }
+                    } catch (err) { reject(err); }
                 };
                 reader.onerror = reject;
                 reader.readAsArrayBuffer(file);
             });
         }
 
-        async function readTextFile(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = reject;
-                reader.readAsText(file, 'UTF-8');
-            });
-        }
+        async function readTextFile(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result); reader.onerror = reject; reader.readAsText(file, 'UTF-8'); }); }
 
         async function recognizeImage(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = async (e) => {
-                    try {
-                        const base64 = e.target.result.split(',')[1];
+            let imageData = await fileToBase64(file);
+            if (file.size > 2 * 1024 * 1024) imageData = await compressImage(imageData);
+            const response = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name }) });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Ошибка OCR');
+            return result.text;
+        }
 
-                        const response = await fetch('/api/ocr', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                image: base64,
-                                filename: file.name
-                            })
-                        });
+        function fileToBase64(file) { return new Promise((resolve, reject) => { const reader = new FileReader(); reader.onload = (e) => resolve(e.target.result.split(',')[1]); reader.onerror = reject; reader.readAsDataURL(file); }); }
 
-                        const result = await response.json();
-
-                        if (!response.ok) {
-                            throw new Error(result.error || 'Ошибка OCR');
-                        }
-
-                        resolve(result.text);
-                    } catch (err) {
-                        reject(new Error('Ошибка распознавания: ' + err.message));
-                    }
+        async function compressImage(base64) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 1600;
+                    let { width, height } = img;
+                    if (width > height && width > maxSize) { height = (height * maxSize) / width; width = maxSize; } else if (height > maxSize) { width = (width * maxSize) / height; height = maxSize; }
+                    canvas.width = width; canvas.height = height;
+                    canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                    resolve(canvas.toDataURL('image/jpeg', 0.8).split(',')[1]);
                 };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
+                img.src = 'data:image/jpeg;base64,' + base64;
             });
         }
 
-        async function processAllFiles(files, statusEl) {
+        function setProgress(step, percent, text) {
+            document.getElementById('progressContainer').classList.add('active');
+            document.getElementById('progressFill').style.width = percent + '%';
+            document.getElementById('progressText').textContent = text;
+            document.querySelectorAll('.progress-step').forEach(el => {
+                const stepNum = parseInt(el.dataset.step);
+                el.classList.remove('active', 'completed');
+                if (stepNum < step) el.classList.add('completed');
+                if (stepNum === step) el.classList.add('active');
+            });
+            if (generationStartTime) document.getElementById('progressTime').textContent = `Прошло: ${((Date.now() - generationStartTime) / 1000).toFixed(1)} сек.`;
+        }
+
+        function hideProgress() { document.getElementById('progressContainer').classList.remove('active'); }
+
+        async function processAllFiles(files, statusCallback) {
             const texts = [];
-
-            for (const file of files) {
-                try {
-                    const text = await readFileContent(file, statusEl);
-                    if (text && text.trim()) {
-                        texts.push(`--- ${file.name} ---\n${text}`);
-                    }
-                } catch (err) {
-                    console.error(`Error processing ${file.name}:`, err);
-                    texts.push(`--- ${file.name} ---\n[Ошибка чтения файла: ${err.message}]`);
-                }
-            }
-
-            if (statusEl) statusEl.textContent = '';
+            for (const file of files) { try { const text = await readFileContent(file, statusCallback); if (text && text.trim()) texts.push(`--- ${file.name} ---\n${text}`); } catch (err) { texts.push(`--- ${file.name} ---\n[Ошибка: ${err.message}]`); } }
             return texts.join('\n\n');
         }
 
         async function generateArguments(useModel = null) {
             const analyzeBtn = document.getElementById('analyzeBtn');
-            const loading = document.getElementById('loading');
-            const loadingText = document.getElementById('loadingText');
             const output = document.getElementById('output');
             const errorBox = document.getElementById('errorBox');
             const actionButtons = document.getElementById('actionButtons');
-            const modelBadge = document.getElementById('modelBadge');
-
+            const outputBadges = document.getElementById('outputBadges');
             const modelToUse = useModel || selectedModel;
+            generationStartTime = Date.now();
 
-            const claimText = document.getElementById('claimText').value;
-            const responseText = document.getElementById('responseText').value;
+            let finalClaimText = document.getElementById('claimText').value;
+            let finalResponseText = document.getElementById('responseText').value;
             const userComments = document.getElementById('userComments').value;
 
-            let finalClaimText = claimText;
-            let finalResponseText = responseText;
-
             analyzeBtn.disabled = true;
-            loading.classList.add('active');
-            loadingText.textContent = 'Обработка файлов...';
             output.style.display = 'none';
             errorBox.classList.remove('active');
             actionButtons.style.display = 'none';
-            modelBadge.style.display = 'none';
+            outputBadges.style.display = 'none';
 
             try {
-                // Обрабатываем файлы
-                if (claimFiles.length > 0) {
-                    const claimStatus = document.getElementById('claim-processing');
-                    const filesText = await processAllFiles(claimFiles, claimStatus);
-                    finalClaimText = filesText + (claimText ? '\n\n' + claimText : '');
-                }
+                setProgress(1, 10, 'Чтение файлов...');
+                if (claimFiles.length > 0) { finalClaimText = await processAllFiles(claimFiles, (msg) => setProgress(1, 20, msg)) + (finalClaimText ? '\n\n' + finalClaimText : ''); }
+                if (responseFiles.length > 0) { setProgress(2, 40, 'Обработка отзыва...'); finalResponseText = await processAllFiles(responseFiles, (msg) => setProgress(2, 50, msg)) + (finalResponseText ? '\n\n' + finalResponseText : ''); }
+                if (!finalClaimText.trim()) throw new Error('Загрузите иск или введите его текст');
 
-                if (responseFiles.length > 0) {
-                    const responseStatus = document.getElementById('response-processing');
-                    const filesText = await processAllFiles(responseFiles, responseStatus);
-                    finalResponseText = filesText + (responseText ? '\n\n' + responseText : '');
-                }
+                lastInputData = { claim_text: finalClaimText, response_text: finalResponseText, user_comments: userComments };
+                setProgress(3, 60, `Генерация (${MODEL_NAMES[modelToUse]})...`);
 
-                if (!finalClaimText.trim()) {
-                    throw new Error('Загрузите иск или введите его текст');
-                }
-
-                // Сохраняем данные для перегенерации
-                lastInputData = {
-                    claim_text: finalClaimText,
-                    response_text: finalResponseText,
-                    user_comments: userComments
-                };
-
-                loadingText.textContent = `Генерация (${MODEL_NAMES[modelToUse]})...`;
-
-                let ratesInfo = 'Ставка ЦБ недоступна';
-                if (currentRate) {
-                    ratesInfo = `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})`;
-                }
-
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        claim_text: finalClaimText,
-                        response_text: finalResponseText,
-                        other_documents: '',
-                        user_comments: userComments,
-                        rates_info: ratesInfo,
-                        model: modelToUse
-                    })
-                });
-
+                const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})` : '';
+                const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
+                setProgress(3, 80, 'Получение ответа...');
                 const result = await response.json();
-
                 if (!response.ok) throw new Error(result.error || 'Ошибка');
 
-                lastResult = result.arguments_text;
-                lastUsedModel = result.model_used || modelToUse;
+                setProgress(4, 100, 'Готово!');
+                const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
 
-                modelBadge.textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
-                modelBadge.style.display = 'inline-block';
-
-                output.textContent = result.arguments_text;
-                output.classList.remove('output-empty');
-                output.style.display = 'block';
-
-                actionButtons.style.display = 'flex';
-                saveToHistory(result.arguments_text, lastUsedModel);
-
-            } catch (error) {
-                errorBox.textContent = '❌ ' + error.message;
-                errorBox.classList.add('active');
-                output.style.display = 'block';
-            } finally {
-                analyzeBtn.disabled = false;
-                loading.classList.remove('active');
-            }
+                setTimeout(() => {
+                    hideProgress();
+                    lastResult = result.arguments_text;
+                    lastUsedModel = result.model_used || modelToUse;
+                    document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
+                    document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.`;
+                    outputBadges.style.display = 'block';
+                    output.textContent = result.arguments_text;
+                    output.classList.remove('output-empty');
+                    output.style.display = 'block';
+                    actionButtons.style.display = 'flex';
+                    saveToHistory(result.arguments_text, lastUsedModel);
+                    updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
+                }, 500);
+            } catch (error) { hideProgress(); errorBox.textContent = '❌ ' + error.message; errorBox.classList.add('active'); output.style.display = 'block'; } finally { analyzeBtn.disabled = false; }
         }
 
         function regenerateWithDifferentModel() {
-            if (!lastInputData) {
-                alert('Сначала сгенерируйте аргументы');
-                return;
-            }
-
+            if (!lastInputData) { alert('Сначала сгенерируйте аргументы'); return; }
             const models = ['gemini-2.5-pro', 'claude-sonnet-4-20250514', 'claude-opus-4-5-20251101'];
-            const currentIndex = models.indexOf(lastUsedModel);
-            const nextIndex = (currentIndex + 1) % models.length;
-            const nextModel = models[nextIndex];
-
-            document.querySelectorAll('.model-option').forEach(opt => {
-                opt.classList.toggle('selected', opt.dataset.model === nextModel);
-            });
+            const nextModel = models[(models.indexOf(lastUsedModel) + 1) % models.length];
+            document.querySelectorAll('.model-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.model === nextModel));
             selectedModel = nextModel;
-
             generateWithSavedData(nextModel);
         }
 
         async function generateWithSavedData(modelToUse) {
             if (!lastInputData) return;
-
             const analyzeBtn = document.getElementById('analyzeBtn');
-            const loading = document.getElementById('loading');
-            const loadingText = document.getElementById('loadingText');
             const output = document.getElementById('output');
             const errorBox = document.getElementById('errorBox');
             const actionButtons = document.getElementById('actionButtons');
-            const modelBadge = document.getElementById('modelBadge');
+            const outputBadges = document.getElementById('outputBadges');
 
             analyzeBtn.disabled = true;
-            loading.classList.add('active');
-            loadingText.textContent = `Генерация (${MODEL_NAMES[modelToUse]})...`;
+            generationStartTime = Date.now();
+            setProgress(3, 30, `Генерация (${MODEL_NAMES[modelToUse]})...`);
             output.style.display = 'none';
             errorBox.classList.remove('active');
             actionButtons.style.display = 'none';
 
             try {
-                let ratesInfo = 'Ставка ЦБ недоступна';
-                if (currentRate) {
-                    ratesInfo = `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})`;
-                }
-
-                const response = await fetch('/api/analyze', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        ...lastInputData,
-                        other_documents: '',
-                        rates_info: ratesInfo,
-                        model: modelToUse
-                    })
-                });
-
+                const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
+                const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) });
+                setProgress(3, 80, 'Получение ответа...');
                 const result = await response.json();
-
                 if (!response.ok) throw new Error(result.error || 'Ошибка');
 
-                lastResult = result.arguments_text;
-                lastUsedModel = result.model_used || modelToUse;
+                setProgress(4, 100, 'Готово!');
+                const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
+                setTimeout(() => {
+                    hideProgress();
+                    lastResult = result.arguments_text;
+                    lastUsedModel = result.model_used || modelToUse;
+                    document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
+                    document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.`;
+                    outputBadges.style.display = 'block';
+                    output.textContent = result.arguments_text;
+                    output.classList.remove('output-empty');
+                    output.style.display = 'block';
+                    actionButtons.style.display = 'flex';
+                    saveToHistory(result.arguments_text, lastUsedModel);
+                    updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
+                }, 500);
+            } catch (error) { hideProgress(); errorBox.textContent = '❌ ' + error.message; errorBox.classList.add('active'); output.style.display = 'block'; } finally { analyzeBtn.disabled = false; }
+        }
 
-                modelBadge.textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
-                modelBadge.style.display = 'inline-block';
-
-                output.textContent = result.arguments_text;
-                output.classList.remove('output-empty');
-                output.style.display = 'block';
-
-                actionButtons.style.display = 'flex';
-                saveToHistory(result.arguments_text, lastUsedModel);
-
-            } catch (error) {
-                errorBox.textContent = '❌ ' + error.message;
-                errorBox.classList.add('active');
-                output.style.display = 'block';
-            } finally {
-                analyzeBtn.disabled = false;
-                loading.classList.remove('active');
+        async function runComparison() {
+            if (!lastInputData && !document.getElementById('claimText').value && claimFiles.length === 0) { alert('Сначала загрузите документы'); return; }
+            if (!lastInputData) {
+                let finalClaimText = document.getElementById('claimText').value;
+                if (claimFiles.length > 0) finalClaimText = await processAllFiles(claimFiles, () => {});
+                lastInputData = { claim_text: finalClaimText, response_text: document.getElementById('responseText').value, user_comments: document.getElementById('userComments').value };
             }
+            document.getElementById('comparisonContainer').classList.add('active');
+            document.getElementById('compareBtn').disabled = true;
+            const models = ['gemini-2.5-pro', 'claude-sonnet-4-20250514'];
+            const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
+            const promises = models.map(async (model, i) => {
+                const containerId = i === 0 ? 'gemini' : 'claude';
+                document.getElementById(`content-${containerId}`).textContent = 'Генерация...';
+                document.getElementById(`time-${containerId}`).textContent = '';
+                const startTime = Date.now();
+                try {
+                    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: model }) });
+                    const result = await response.json();
+                    document.getElementById(`content-${containerId}`).textContent = result.arguments_text || result.error;
+                    document.getElementById(`time-${containerId}`).textContent = `${((Date.now() - startTime) / 1000).toFixed(1)} сек.`;
+                } catch (err) { document.getElementById(`content-${containerId}`).textContent = 'Ошибка: ' + err.message; }
+            });
+            await Promise.all(promises);
+            document.getElementById('compareBtn').disabled = false;
+        }
+
+        function toggleEdit() {
+            const output = document.getElementById('output');
+            isEditing = !isEditing;
+            output.contentEditable = isEditing;
+            output.classList.toggle('output-editable', isEditing);
+            if (isEditing) output.focus(); else lastResult = output.textContent;
         }
 
         function clearForm() {
-            claimFiles = [];
-            responseFiles = [];
-            updateFileList('claim');
-            updateFileList('response');
-
+            claimFiles = []; responseFiles = [];
+            updateFileList('claim'); updateFileList('response');
             ['claimText', 'responseText', 'userComments'].forEach(id => document.getElementById(id).value = '');
-
             const output = document.getElementById('output');
             output.textContent = 'Загрузите документы и нажмите «Сгенерировать»';
             output.classList.add('output-empty');
+            output.contentEditable = false;
+            isEditing = false;
             document.getElementById('errorBox').classList.remove('active');
             document.getElementById('actionButtons').style.display = 'none';
-            document.getElementById('modelBadge').style.display = 'none';
+            document.getElementById('outputBadges').style.display = 'none';
             lastInputData = null;
+            localStorage.removeItem('draft');
         }
 
-        function copyToClipboard() {
-            navigator.clipboard.writeText(lastResult).then(() => {
-                alert('Скопировано!');
-            });
-        }
+        function copyToClipboard() { navigator.clipboard.writeText(document.getElementById('output').textContent).then(() => alert('Скопировано!')); }
 
         async function downloadDocx() {
             const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
-
-            const lines = lastResult.split('\n');
+            const text = document.getElementById('output').textContent;
+            const lines = text.split('\n');
             const children = [];
-
             for (const line of lines) {
                 const trimmed = line.trim();
-                if (!trimmed) {
-                    children.push(new Paragraph({ text: '' }));
-                    continue;
-                }
-
+                if (!trimmed) { children.push(new Paragraph({ text: '' })); continue; }
                 const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
                 const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
-
-                if (isMainHeading) {
-                    children.push(new Paragraph({
-                        children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a3a6e" })],
-                        spacing: { before: 360, after: 180 },
-                        alignment: AlignmentType.LEFT
-                    }));
-                } else if (isSubHeading) {
-                    children.push(new Paragraph({
-                        children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a3a6e" })],
-                        spacing: { before: 240, after: 120 }
-                    }));
-                } else {
-                    children.push(new Paragraph({
-                        children: [new TextRun({ text: trimmed, size: 24 })],
-                        spacing: { after: 120 },
-                        alignment: AlignmentType.JUSTIFIED
-                    }));
-                }
+                if (isMainHeading) children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a3a6e" })], spacing: { before: 360, after: 180 } }));
+                else if (isSubHeading) children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a3a6e" })], spacing: { before: 240, after: 120 } }));
+                else children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 120 }, alignment: AlignmentType.JUSTIFIED }));
             }
+            const doc = new Document({ sections: [{ properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } }, children }] });
+            saveAs(await Packer.toBlob(doc), 'arguments_333.docx');
+        }
 
-            const doc = new Document({
-                sections: [{
-                    properties: {
-                        page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } }
-                    },
-                    children: children
-                }]
-            });
-
-            const blob = await Packer.toBlob(doc);
-            saveAs(blob, 'arguments_333.docx');
+        async function downloadPdf() {
+            const { jsPDF } = window.jspdf;
+            const text = document.getElementById('output').textContent;
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            const margin = 20;
+            const lines = pdf.splitTextToSize(text, pageWidth - margin * 2);
+            let y = margin;
+            for (const line of lines) {
+                if (y > pdf.internal.pageSize.getHeight() - margin) { pdf.addPage(); y = margin; }
+                pdf.text(line, margin, y);
+                y += 6;
+            }
+            pdf.save('arguments_333.pdf');
         }
 
         function saveToHistory(fullText, model) {
             const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
-            const resultPreview = fullText.substring(0, 100).replace(/[\r\n]+/g, ' ');
-            history.unshift({
-                date: new Date().toISOString(),
-                preview: resultPreview,
-                text: fullText,
-                model: model
-            });
+            history.unshift({ date: new Date().toISOString(), preview: fullText.substring(0, 100).replace(/[\r\n]+/g, ' '), text: fullText, model });
             if (history.length > 10) history.pop();
             localStorage.setItem('argumentsHistory', JSON.stringify(history));
             loadHistory();
@@ -1044,19 +1006,9 @@
             const history = JSON.parse(localStorage.getItem('argumentsHistory') || '[]');
             const section = document.getElementById('historySection');
             const list = document.getElementById('historyList');
-
-            if (history.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-
+            if (history.length === 0) { section.style.display = 'none'; return; }
             section.style.display = 'block';
-            list.innerHTML = history.map((item, i) => `
-                <div class="history-item" onclick="loadFromHistory(${i})">
-                    <div class="date">${formatDate(item.date)} ${item.model ? '• ' + (MODEL_NAMES[item.model] || item.model) : ''}</div>
-                    <div class="preview">${item.preview}...</div>
-                </div>
-            `).join('');
+            list.innerHTML = history.map((item, i) => `<div class="history-item" onclick="loadFromHistory(${i})"><div class="date">${formatDate(item.date)} ${item.model ? '• ' + (MODEL_NAMES[item.model] || item.model) : ''}</div><div class="preview">${item.preview}...</div></div>`).join('');
         }
 
         function loadFromHistory(index) {
@@ -1064,16 +1016,116 @@
             if (history[index]) {
                 lastResult = history[index].text;
                 lastUsedModel = history[index].model || '';
-                document.getElementById('output').textContent = history[index].text;
-                document.getElementById('output').classList.remove('output-empty');
-                document.getElementById('output').style.display = 'block';
+                const output = document.getElementById('output');
+                output.textContent = history[index].text;
+                output.classList.remove('output-empty');
+                output.style.display = 'block';
                 document.getElementById('actionButtons').style.display = 'flex';
+                if (lastUsedModel) { document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel; document.getElementById('outputBadges').style.display = 'block'; }
+            }
+        }
 
-                const modelBadge = document.getElementById('modelBadge');
-                if (lastUsedModel) {
-                    modelBadge.textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
-                    modelBadge.style.display = 'inline-block';
-                }
+        function loadTemplates() {
+            const templates = JSON.parse(localStorage.getItem('argumentTemplates') || '[]');
+            const grid = document.getElementById('templateGrid');
+            const noTemplates = document.getElementById('noTemplates');
+            if (templates.length === 0) { grid.innerHTML = ''; noTemplates.style.display = 'block'; return; }
+            noTemplates.style.display = 'none';
+            grid.innerHTML = templates.map((t, i) => `<div class="template-card" onclick="useTemplate(${i})"><h4>${t.name}</h4><p>${t.description}</p><div class="template-tags">${t.tags.map(tag => `<span class="template-tag">${tag}</span>`).join('')}</div><button class="btn btn-secondary btn-sm" style="margin-top: 10px;" onclick="event.stopPropagation(); deleteTemplate(${i})">Удалить</button></div>`).join('');
+        }
+
+        function saveAsTemplate() { if (!lastResult) { alert('Нет результата'); return; } document.getElementById('templateModal').classList.add('active'); }
+        function closeTemplateModal() { document.getElementById('templateModal').classList.remove('active'); document.getElementById('templateName').value = ''; document.getElementById('templateDesc').value = ''; document.getElementById('templateTags').value = ''; }
+
+        function confirmSaveTemplate() {
+            const name = document.getElementById('templateName').value.trim();
+            if (!name) { alert('Введите название'); return; }
+            const templates = JSON.parse(localStorage.getItem('argumentTemplates') || '[]');
+            templates.push({ name, description: document.getElementById('templateDesc').value.trim(), tags: document.getElementById('templateTags').value.trim().split(',').map(t => t.trim()).filter(t => t), text: lastResult, model: lastUsedModel, date: new Date().toISOString() });
+            localStorage.setItem('argumentTemplates', JSON.stringify(templates));
+            closeTemplateModal(); loadTemplates(); alert('Шаблон сохранён!');
+        }
+
+        function useTemplate(index) {
+            const templates = JSON.parse(localStorage.getItem('argumentTemplates') || '[]');
+            if (templates[index]) {
+                lastResult = templates[index].text;
+                lastUsedModel = templates[index].model;
+                switchMainTab('generator');
+                const output = document.getElementById('output');
+                output.textContent = templates[index].text;
+                output.classList.remove('output-empty');
+                output.style.display = 'block';
+                document.getElementById('actionButtons').style.display = 'flex';
+                document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
+                document.getElementById('outputBadges').style.display = 'block';
+            }
+        }
+
+        function deleteTemplate(index) {
+            if (!confirm('Удалить шаблон?')) return;
+            const templates = JSON.parse(localStorage.getItem('argumentTemplates') || '[]');
+            templates.splice(index, 1);
+            localStorage.setItem('argumentTemplates', JSON.stringify(templates));
+            loadTemplates();
+        }
+
+        function calculatePenalty() {
+            const debt = parseFloat(document.getElementById('calcDebt').value) || 0;
+            const startDate = document.getElementById('calcStartDate').value;
+            const endDate = document.getElementById('calcEndDate').value;
+            const rateType = document.getElementById('calcRateType').value;
+            document.getElementById('customRateRow').style.display = rateType === 'contract' ? 'block' : 'none';
+            if (!debt || !startDate || !endDate) { document.getElementById('calcResult').style.display = 'none'; return; }
+            const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
+            if (days <= 0) { document.getElementById('calcResult').style.display = 'none'; return; }
+            let yearRate, rateLabel;
+            const keyRate = currentRate ? currentRate.key_rate : 16;
+            switch (rateType) {
+                case '395': yearRate = keyRate; rateLabel = `${yearRate}% (ключ. ставка)`; break;
+                case 'double': yearRate = keyRate * 2; rateLabel = `${yearRate}% (2× ключ. ставки)`; break;
+                case '01': yearRate = 36.5; rateLabel = '0.1% в день'; break;
+                case '05': yearRate = 182.5; rateLabel = '0.5% в день'; break;
+                case '1': yearRate = 365; rateLabel = '1% в день'; break;
+                default: yearRate = parseFloat(document.getElementById('calcCustomRate').value) || 0; rateLabel = `${yearRate}% годовых`;
+            }
+            const penalty = debt * (yearRate / 100) * (days / 365);
+            const penalty333 = debt * (keyRate * 2 / 100) * (days / 365);
+            document.getElementById('calcResult').style.display = 'block';
+            document.getElementById('resultDebt').textContent = debt.toLocaleString('ru-RU') + ' ₽';
+            document.getElementById('resultDays').textContent = `${days} дн.`;
+            document.getElementById('resultRate').textContent = rateLabel;
+            document.getElementById('resultPenalty').textContent = penalty.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) + ' ₽';
+            document.getElementById('result333').textContent = penalty333.toLocaleString('ru-RU', { maximumFractionDigits: 2 }) + ' ₽';
+        }
+
+        function updateStatsAfterGeneration(model, time) {
+            stats.total++;
+            stats.times.push(time);
+            if (stats.times.length > 100) stats.times.shift();
+            stats.models[model] = (stats.models[model] || 0) + 1;
+            localStorage.setItem('generationStats', JSON.stringify(stats));
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('totalGenerations').textContent = stats.total;
+            if (stats.times.length > 0) document.getElementById('avgTime').textContent = (stats.times.reduce((a, b) => a + b, 0) / stats.times.length).toFixed(1) + ' сек.';
+            if (Object.keys(stats.models).length > 0) document.getElementById('topModel').textContent = MODEL_NAMES[Object.entries(stats.models).sort((a, b) => b[1] - a[1])[0][0]] || '-';
+        }
+
+        function saveDraft() {
+            const draft = { claimText: document.getElementById('claimText').value, responseText: document.getElementById('responseText').value, userComments: document.getElementById('userComments').value, selectedModel };
+            if (draft.claimText || draft.responseText || draft.userComments) localStorage.setItem('draft', JSON.stringify(draft));
+        }
+
+        function loadDraft() {
+            const draft = JSON.parse(localStorage.getItem('draft') || 'null');
+            if (draft) {
+                document.getElementById('claimText').value = draft.claimText || '';
+                document.getElementById('responseText').value = draft.responseText || '';
+                document.getElementById('userComments').value = draft.userComments || '';
+                if (draft.selectedModel) { selectedModel = draft.selectedModel; document.querySelectorAll('.model-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.model === selectedModel)); }
             }
         }
     </script>
