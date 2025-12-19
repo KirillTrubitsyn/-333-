@@ -28,7 +28,11 @@ def get_anthropic_client():
     global anthropic_client
     if anthropic_client is None and ANTHROPIC_API_KEY:
         import anthropic
-        anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        from httpx import Timeout
+        anthropic_client = anthropic.Anthropic(
+            api_key=ANTHROPIC_API_KEY,
+            timeout=Timeout(50.0, connect=10.0)
+        )
     return anthropic_client
 
 
@@ -176,7 +180,7 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
     try:
         message = client.messages.create(
             model=model_id,
-            max_tokens=8192,
+            max_tokens=4096,
             system=system_prompt,
             messages=[
                 {"role": "user", "content": user_prompt}
@@ -185,15 +189,19 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
         text = message.content[0].text
         return clean_markdown(text)
     except Exception as e:
-        error_msg = str(e)
-        if "overloaded" in error_msg.lower():
-            raise Exception("Claude API перегружен. Попробуйте позже или используйте другую модель.")
-        elif "rate" in error_msg.lower():
+        error_msg = str(e).lower()
+        if "timeout" in error_msg or "timed out" in error_msg:
+            raise Exception("Claude API не ответил вовремя. Попробуйте Gemini или повторите позже.")
+        elif "overloaded" in error_msg:
+            raise Exception("Claude API перегружен. Попробуйте позже или используйте Gemini.")
+        elif "rate" in error_msg:
             raise Exception("Превышен лимит запросов Claude. Подождите минуту.")
-        elif "invalid" in error_msg.lower() and "key" in error_msg.lower():
+        elif "invalid" in error_msg and "key" in error_msg:
             raise Exception("Неверный API ключ Claude.")
+        elif "connection" in error_msg:
+            raise Exception("Не удалось подключиться к Claude API. Проверьте интернет.")
         else:
-            raise Exception(f"Ошибка Claude: {error_msg[:200]}")
+            raise Exception(f"Ошибка Claude: {str(e)[:200]}")
 
 
 class handler(BaseHTTPRequestHandler):
