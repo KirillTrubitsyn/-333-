@@ -714,10 +714,10 @@
                         <div class="model-options">
                             <div class="model-option selected" data-model="gemini-3-pro-preview" onclick="selectModel(this)">
                                 <div class="model-name">Gemini 3 Pro</div>
-                                <div class="model-desc">Google, быстрый</div>
+                                <div class="model-desc">Google, think deeper</div>
                             </div>
-                            <div class="model-option" data-model="h-20250514" onclick="selectModel(this)">
-                                <div class="model-name">Claude Sonnet 4</div>
+                            <div class="model-option" data-model="claude-sonnet-4-5-20250929" onclick="selectModel(this)">
+                                <div class="model-name">Claude Sonnet 4.5</div>
                                 <div class="model-desc">Anthropic, баланс</div>
                             </div>
                             <div class="model-option" data-model="claude-opus-4-5-20251101" onclick="selectModel(this)">
@@ -952,8 +952,8 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const MAX_FILES = 3, MAX_FILE_SIZE = 10 * 1024 * 1024;
-        const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-5-20250929': 'Claude Sonnet 4', 'claude-opus-4-5-20251101': 'Claude Opus 4.5'};
-        const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-5-20250929': 'Sonnet4', 'claude-opus-4-5-20251101': 'Opus45'};
+        const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5', 'claude-opus-4-5-20251101': 'Claude Opus 4.5'};
+        const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-5-20250929': 'Sonnet45', 'claude-opus-4-5-20251101': 'Opus45'};
 
         function extractCaseId(text) {
             if (!text) return '';
