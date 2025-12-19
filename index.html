@@ -669,15 +669,10 @@
                         <div id="claim-file-tab" class="tab-content active">
                             <div class="file-upload" id="claim-upload-area" onclick="document.getElementById('claimFiles').click()">
                                 <input type="file" id="claimFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'claim')" onclick="event.stopPropagation()">
-                                <input type="file" id="claimCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'claim')" style="display:none">
                                 <div class="upload-icon">📄</div>
                                 <div class="upload-text">DOCX, PDF, TXT, изображения (макс. 10 МБ)</div>
                             </div>
                             <div id="claim-file-list" class="file-list"></div>
-                            <div class="upload-buttons">
-                                <button type="button" class="upload-btn" onclick="document.getElementById('claimFiles').click()">📁 Выбрать файлы</button>
-                                <button type="button" class="upload-btn" onclick="document.getElementById('claimCamera').click()">📷 Сделать фото</button>
-                            </div>
                         </div>
                         <div id="claim-text-tab" class="tab-content">
                             <textarea id="claimText" placeholder="Вставьте текст иска..."></textarea>
@@ -693,15 +688,10 @@
                         <div id="response-file-tab" class="tab-content active">
                             <div class="file-upload" id="response-upload-area" onclick="document.getElementById('responseFiles').click()">
                                 <input type="file" id="responseFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'response')" onclick="event.stopPropagation()">
-                                <input type="file" id="responseCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'response')" style="display:none">
                                 <div class="upload-icon">📋</div>
                                 <div class="upload-text">Ходатайство о снижении</div>
                             </div>
                             <div id="response-file-list" class="file-list"></div>
-                            <div class="upload-buttons">
-                                <button type="button" class="upload-btn" onclick="document.getElementById('responseFiles').click()">📁 Выбрать файлы</button>
-                                <button type="button" class="upload-btn" onclick="document.getElementById('responseCamera').click()">📷 Сделать фото</button>
-                            </div>
                         </div>
                         <div id="response-text-tab" class="tab-content">
                             <textarea id="responseText" placeholder="Вставьте текст отзыва..."></textarea>
