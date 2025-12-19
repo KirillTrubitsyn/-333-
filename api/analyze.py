@@ -28,10 +28,9 @@ def get_anthropic_client():
     global anthropic_client
     if anthropic_client is None and ANTHROPIC_API_KEY:
         import anthropic
-        from httpx import Timeout
         anthropic_client = anthropic.Anthropic(
             api_key=ANTHROPIC_API_KEY,
-            timeout=Timeout(50.0, connect=10.0)
+            timeout=55.0  # 55 сек (в пределах 60 сек Vercel)
         )
     return anthropic_client
 
