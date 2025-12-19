@@ -512,9 +512,9 @@
         .calc-result-item.total { font-size: 16px; }
         .calc-result-item.total .value { color: #C9A227; }
         /* Period rows */
-        .period-row {
+        .payment-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr auto;
+            grid-template-columns: 1fr 1fr auto;
             gap: 10px;
             align-items: end;
             padding: 10px;
@@ -522,34 +522,32 @@
             border-radius: 6px;
             margin-bottom: 8px;
         }
-        .period-row input {
+        .payment-row input {
             width: 100%;
             padding: 8px;
             border: 1px solid #E1E8ED;
             border-radius: 4px;
             font-size: 12px;
         }
-        .period-row label {
+        .payment-row label {
             font-size: 11px;
             color: #8899A6;
             margin-bottom: 4px;
             display: block;
         }
-        .period-row .remove-period {
+        .remove-payment {
             background: none;
             border: none;
             color: #E53E3E;
             cursor: pointer;
             font-size: 18px;
             padding: 8px;
+            border-radius: 4px;
         }
-        .period-row .remove-period:hover { background: #FED7D7; border-radius: 4px; }
+        .remove-payment:hover { background: #FED7D7; }
         @media (max-width: 600px) {
-            .period-row {
+            .payment-row {
                 grid-template-columns: 1fr 1fr;
-            }
-            .period-row > div:first-child {
-                grid-column: span 2;
             }
         }
         /* Templates */
@@ -812,35 +810,26 @@
 
                 <div class="calc-form">
                     <div class="calc-row">
-                        <label>Тип расчёта</label>
-                        <select id="calcType" onchange="toggleCalcType()">
-                            <option value="simple">Простой (одна сумма)</option>
-                            <option value="periods">По периодам (поставки/платежи)</option>
-                        </select>
+                        <label>Сумма основного долга (руб.)</label>
+                        <input type="number" id="calcDebt" placeholder="1000000">
+                    </div>
+                    <div class="calc-row">
+                        <label>Дата начала просрочки</label>
+                        <input type="date" id="calcStartDate">
+                    </div>
+                    <div class="calc-row">
+                        <label>Дата окончания расчёта</label>
+                        <input type="date" id="calcEndDate">
                     </div>
 
-                    <!-- Simple calculation -->
-                    <div id="simpleCalc">
-                        <div class="calc-row"><label>Сумма долга (руб.)</label><input type="number" id="calcDebt" placeholder="1000000"></div>
-                        <div class="calc-row"><label>Дата начала просрочки</label><input type="date" id="calcStartDate"></div>
-                        <div class="calc-row"><label>Дата окончания (расчёта)</label><input type="date" id="calcEndDate"></div>
+                    <div style="margin: 20px 0 10px; padding-top: 15px; border-top: 1px solid #E1E8ED;">
+                        <label style="font-size: 13px; font-weight: 600; color: #1E3A5F;">Частичные платежи (если были)</label>
+                        <p style="font-size: 11px; color: #8899A6; margin: 4px 0 10px;">Добавьте даты и суммы частичного погашения долга</p>
                     </div>
+                    <div id="paymentsList"></div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addPayment()" style="margin-top: 8px;">+ Добавить платёж</button>
 
-                    <!-- Periods calculation -->
-                    <div id="periodsCalc" style="display: none;">
-                        <div class="calc-row">
-                            <label>Дата окончания (расчёта)</label>
-                            <input type="date" id="calcEndDatePeriods">
-                        </div>
-                        <div style="margin: 15px 0;">
-                            <label style="font-size: 13px; font-weight: 500; color: #1E3A5F;">Поставки / Платежи</label>
-                            <p style="font-size: 11px; color: #8899A6; margin: 4px 0 10px;">Добавьте суммы и сроки исполнения обязательств</p>
-                        </div>
-                        <div id="periodsList"></div>
-                        <button type="button" class="btn btn-secondary btn-sm" onclick="addPeriod()" style="margin-top: 10px;">+ Добавить строку</button>
-                    </div>
-
-                    <div class="calc-row" style="margin-top: 15px;">
+                    <div class="calc-row" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #E1E8ED;">
                         <label>Ставка неустойки</label>
                         <select id="calcRateType" onchange="toggleCustomRate()">
                             <option value="contract">По договору (ввести)</option>
@@ -851,7 +840,10 @@
                             <option value="1">1% в день</option>
                         </select>
                     </div>
-                    <div class="calc-row" id="customRateRow"><label>Ставка по договору (% годовых)</label><input type="number" id="calcCustomRate" placeholder="36"></div>
+                    <div class="calc-row" id="customRateRow">
+                        <label>Ставка по договору (% годовых)</label>
+                        <input type="number" id="calcCustomRate" placeholder="36">
+                    </div>
 
                     <div id="calcError" style="display: none; background: #FFF5F5; border: 1px solid #FC8181; border-radius: 6px; padding: 10px; margin-top: 15px; color: #C53030; font-size: 13px;"></div>
 
@@ -961,6 +953,29 @@
 
         const MAX_FILES = 3, MAX_FILE_SIZE = 10 * 1024 * 1024;
         const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-20250514': 'Claude Sonnet 4', 'claude-opus-4-5-20251101': 'Claude Opus 4.5'};
+        const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-20250514': 'Sonnet4', 'claude-opus-4-5-20251101': 'Opus45'};
+
+        function extractCaseId(text) {
+            if (!text) return '';
+            // Ищем ООО/АО/ЗАО/ПАО/ИП + название
+            const orgMatch = text.match(/(?:ООО|АО|ЗАО|ПАО|ИП)\s*[«"]?([А-Яа-яЁё\w\-]+)[»"]?/);
+            if (orgMatch) return orgMatch[1].substring(0, 15);
+            // Ищем номер договора
+            const contractMatch = text.match(/(?:договор[а-я]*|контракт[а-я]*)\s*(?:№|#|N)?\s*([А-Яа-яA-Za-z0-9\-\/]+)/i);
+            if (contractMatch) return contractMatch[1].substring(0, 12);
+            // Ищем номер дела
+            const caseMatch = text.match(/(?:дело|А)\s*(?:№|#)?\s*([А-Яа-яA-Za-z0-9\-\/]+)/i);
+            if (caseMatch) return caseMatch[1].substring(0, 12);
+            return '';
+        }
+
+        function generateFileName(ext) {
+            const modelShort = MODEL_SHORT[lastUsedModel] || 'AI';
+            const claimText = document.getElementById('claimText').value;
+            const caseId = extractCaseId(claimText);
+            const safeId = caseId.replace(/[<>:"/\\|?*]/g, '_');
+            return safeId ? `${modelShort}_${safeId}.${ext}` : `${modelShort}_333.${ext}`;
+        }
 
         let cachedRates = [], currentRate = null, lastResult = '', selectedModel = 'gemini-3-pro-preview', lastUsedModel = '', lastInputData = null;
         let claimFiles = [], responseFiles = [], isEditing = false, generationStartTime = null;
@@ -1633,75 +1648,80 @@
                 else children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 120 }, alignment: AlignmentType.JUSTIFIED }));
             }
             const doc = new Document({ sections: [{ properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } }, children }] });
-            saveAs(await Packer.toBlob(doc), 'arguments_333.docx');
+            saveAs(await Packer.toBlob(doc), generateFileName('docx'));
         }
 
         async function downloadPdf() {
             const { jsPDF } = window.jspdf;
-            const outputEl = document.getElementById('output');
-            const text = outputEl.textContent;
+            const text = document.getElementById('output').textContent;
 
-            // Create a temporary container for PDF rendering
+            // Create styled HTML container
             const tempDiv = document.createElement('div');
             tempDiv.style.cssText = `
                 position: absolute;
                 left: -9999px;
                 top: 0;
-                width: 550px;
-                padding: 30px;
+                width: 170mm;
+                padding: 0;
                 background: white;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                font-size: 11px;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
                 line-height: 1.5;
                 color: #000;
-                white-space: pre-wrap;
-                word-wrap: break-word;
             `;
-            tempDiv.textContent = text;
+
+            // Format text with proper paragraphs (like DOCX)
+            const lines = text.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                const p = document.createElement('p');
+                p.style.margin = '0 0 8pt 0';
+                p.style.textAlign = 'justify';
+
+                const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
+                const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
+
+                if (!trimmed) {
+                    p.innerHTML = '&nbsp;';
+                } else if (isMainHeading) {
+                    p.style.fontWeight = 'bold';
+                    p.style.fontSize = '13pt';
+                    p.style.marginTop = '14pt';
+                    p.style.marginBottom = '8pt';
+                    p.style.color = '#1a3a6e';
+                    p.textContent = trimmed;
+                } else if (isSubHeading) {
+                    p.style.fontWeight = 'bold';
+                    p.style.fontSize = '12pt';
+                    p.style.marginTop = '10pt';
+                    p.style.color = '#1a3a6e';
+                    p.textContent = trimmed;
+                } else {
+                    p.textContent = trimmed;
+                }
+                tempDiv.appendChild(p);
+            }
+
             document.body.appendChild(tempDiv);
 
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const pageWidthMm = pdf.internal.pageSize.getWidth();
-            const pageHeightMm = pdf.internal.pageSize.getHeight();
-            const marginMm = 10;
-            const contentWidthMm = pageWidthMm - marginMm * 2;
-            const contentHeightMm = pageHeightMm - marginMm * 2;
 
+            const pdfFileName = generateFileName('pdf');
             try {
-                const canvas = await html2canvas(tempDiv, {
-                    scale: 2,
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#ffffff'
+                await pdf.html(tempDiv, {
+                    callback: function(doc) {
+                        doc.save(pdfFileName);
+                    },
+                    x: 20,
+                    y: 15,
+                    width: 170,
+                    windowWidth: tempDiv.scrollWidth,
+                    html2canvas: {
+                        scale: 0.265,
+                        useCORS: true,
+                        logging: false
+                    }
                 });
-
-                // Calculate how much canvas height fits on one page
-                const pxPerMm = canvas.width / contentWidthMm;
-                const pageHeightPx = contentHeightMm * pxPerMm;
-                const totalPages = Math.ceil(canvas.height / pageHeightPx);
-
-                for (let page = 0; page < totalPages; page++) {
-                    if (page > 0) pdf.addPage();
-
-                    // Calculate source coordinates for this page slice
-                    const srcY = page * pageHeightPx;
-                    const srcHeight = Math.min(pageHeightPx, canvas.height - srcY);
-
-                    // Create a cropped canvas for this page
-                    const pageCanvas = document.createElement('canvas');
-                    pageCanvas.width = canvas.width;
-                    pageCanvas.height = srcHeight;
-                    const ctx = pageCanvas.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-                    ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
-
-                    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.92);
-                    const imgHeightMm = srcHeight / pxPerMm;
-                    pdf.addImage(pageImgData, 'JPEG', marginMm, marginMm, contentWidthMm, imgHeightMm);
-                }
-
-                pdf.save('arguments_333.pdf');
             } finally {
                 document.body.removeChild(tempDiv);
             }
@@ -1812,45 +1832,32 @@
             loadTemplates();
         }
 
-        let calcPeriods = [];
+        let calcPayments = [];
 
-        function toggleCalcType() {
-            const calcType = document.getElementById('calcType').value;
-            document.getElementById('simpleCalc').style.display = calcType === 'simple' ? 'block' : 'none';
-            document.getElementById('periodsCalc').style.display = calcType === 'periods' ? 'block' : 'none';
-            if (calcType === 'periods' && calcPeriods.length === 0) {
-                addPeriod();
-            }
-        }
-
-        function addPeriod() {
+        function addPayment() {
             const id = Date.now();
-            calcPeriods.push(id);
-            const periodsList = document.getElementById('periodsList');
+            calcPayments.push(id);
+            const list = document.getElementById('paymentsList');
             const div = document.createElement('div');
-            div.className = 'period-row';
-            div.id = `period-${id}`;
+            div.className = 'payment-row';
+            div.id = `payment-${id}`;
             div.innerHTML = `
                 <div>
+                    <label>Дата платежа</label>
+                    <input type="date" id="payment-date-${id}">
+                </div>
+                <div>
                     <label>Сумма (руб.)</label>
-                    <input type="number" id="period-amount-${id}" placeholder="100000">
+                    <input type="number" id="payment-amount-${id}" placeholder="100000">
                 </div>
-                <div>
-                    <label>Срок исполнения</label>
-                    <input type="date" id="period-due-${id}">
-                </div>
-                <div>
-                    <label>Дата исполнения</label>
-                    <input type="date" id="period-done-${id}" placeholder="если исполнено">
-                </div>
-                <button type="button" class="remove-period" onclick="removePeriod(${id})" title="Удалить">✕</button>
+                <button type="button" class="remove-payment" onclick="removePayment(${id})" title="Удалить">✕</button>
             `;
-            periodsList.appendChild(div);
+            list.appendChild(div);
         }
 
-        function removePeriod(id) {
-            calcPeriods = calcPeriods.filter(p => p !== id);
-            const el = document.getElementById(`period-${id}`);
+        function removePayment(id) {
+            calcPayments = calcPayments.filter(p => p !== id);
+            const el = document.getElementById(`payment-${id}`);
             if (el) el.remove();
         }
 
@@ -1860,11 +1867,11 @@
             let yearRate, rateLabel;
 
             switch (rateType) {
-                case '395': yearRate = keyRate; rateLabel = `${yearRate}% (ключ. ставка)`; break;
-                case 'double': yearRate = keyRate * 2; rateLabel = `${yearRate}% (2x ключ. ставки)`; break;
-                case '01': yearRate = 36.5; rateLabel = '0.1% в день'; break;
-                case '05': yearRate = 182.5; rateLabel = '0.5% в день'; break;
-                case '1': yearRate = 365; rateLabel = '1% в день'; break;
+                case '395': yearRate = keyRate; rateLabel = `${yearRate}% годовых (ключ. ставка)`; break;
+                case 'double': yearRate = keyRate * 2; rateLabel = `${yearRate}% годовых (2× ключ.)`; break;
+                case '01': yearRate = 36.5; rateLabel = '0.1% в день (36.5% год.)'; break;
+                case '05': yearRate = 182.5; rateLabel = '0.5% в день (182.5% год.)'; break;
+                case '1': yearRate = 365; rateLabel = '1% в день (365% год.)'; break;
                 default:
                     yearRate = parseFloat(document.getElementById('calcCustomRate').value) || 0;
                     rateLabel = `${yearRate}% годовых`;
@@ -1873,9 +1880,9 @@
         }
 
         function showCalcError(msg) {
-            const errorEl = document.getElementById('calcError');
-            errorEl.textContent = msg;
-            errorEl.style.display = 'block';
+            const el = document.getElementById('calcError');
+            el.textContent = msg;
+            el.style.display = 'block';
         }
 
         function hideCalcError() {
@@ -1884,104 +1891,120 @@
 
         function calculatePenalty() {
             hideCalcError();
-            const calcType = document.getElementById('calcType').value;
             const { yearRate, rateLabel, keyRate } = getRate();
 
-            if (yearRate <= 0) {
-                showCalcError('Укажите ставку неустойки');
-                return;
+            if (yearRate <= 0) { showCalcError('Укажите ставку неустойки'); return; }
+
+            const totalDebt = parseFloat(document.getElementById('calcDebt').value) || 0;
+            const startDate = document.getElementById('calcStartDate').value;
+            const endDate = document.getElementById('calcEndDate').value;
+
+            if (!totalDebt) { showCalcError('Укажите сумму долга'); return; }
+            if (!startDate) { showCalcError('Укажите дату начала просрочки'); return; }
+            if (!endDate) { showCalcError('Укажите дату окончания'); return; }
+            if (new Date(endDate) <= new Date(startDate)) { showCalcError('Дата окончания должна быть позже начала'); return; }
+
+            // Собираем платежи
+            const payments = [];
+            for (const id of calcPayments) {
+                const date = document.getElementById(`payment-date-${id}`).value;
+                const amount = parseFloat(document.getElementById(`payment-amount-${id}`).value) || 0;
+                if (date && amount > 0) {
+                    payments.push({ date: new Date(date), amount });
+                }
             }
 
-            let results = [];
+            // Сортируем платежи по дате
+            payments.sort((a, b) => a.date - b.date);
+
+            // Рассчитываем неустойку по периодам
+            const results = [];
+            let remainingDebt = totalDebt;
+            let currentDate = new Date(startDate);
+            const finalDate = new Date(endDate);
             let totalPenalty = 0;
             let totalPenalty333 = 0;
 
-            if (calcType === 'simple') {
-                const debt = parseFloat(document.getElementById('calcDebt').value) || 0;
-                const startDate = document.getElementById('calcStartDate').value;
-                const endDate = document.getElementById('calcEndDate').value;
+            // Обрабатываем каждый период до платежа
+            for (const payment of payments) {
+                if (payment.date <= currentDate) continue; // Платёж до начала просрочки
+                if (payment.date > finalDate) break; // Платёж после даты расчёта
 
-                if (!debt) { showCalcError('Укажите сумму долга'); return; }
-                if (!startDate) { showCalcError('Укажите дату начала просрочки'); return; }
-                if (!endDate) { showCalcError('Укажите дату окончания'); return; }
-
-                const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
-                if (days <= 0) { showCalcError('Дата окончания должна быть позже даты начала'); return; }
-
-                const penalty = debt * (yearRate / 100) * (days / 365);
-                const penalty333 = debt * (keyRate * 2 / 100) * (days / 365);
-
-                results.push({
-                    amount: debt,
-                    startDate,
-                    endDate,
-                    days,
-                    penalty,
-                    penalty333
-                });
-
-                totalPenalty = penalty;
-                totalPenalty333 = penalty333;
-
-            } else {
-                const endDatePeriods = document.getElementById('calcEndDatePeriods').value;
-                if (!endDatePeriods) { showCalcError('Укажите дату окончания расчёта'); return; }
-                if (calcPeriods.length === 0) { showCalcError('Добавьте хотя бы один период'); return; }
-
-                for (const id of calcPeriods) {
-                    const amount = parseFloat(document.getElementById(`period-amount-${id}`).value) || 0;
-                    const dueDate = document.getElementById(`period-due-${id}`).value;
-                    const doneDate = document.getElementById(`period-done-${id}`).value;
-
-                    if (!amount || !dueDate) continue;
-
-                    const calcEndDate = doneDate || endDatePeriods;
-                    const days = Math.ceil((new Date(calcEndDate) - new Date(dueDate)) / (1000 * 60 * 60 * 24));
-
-                    if (days > 0) {
-                        const penalty = amount * (yearRate / 100) * (days / 365);
-                        const penalty333 = amount * (keyRate * 2 / 100) * (days / 365);
-
-                        results.push({
-                            amount,
-                            startDate: dueDate,
-                            endDate: calcEndDate,
-                            days,
-                            penalty,
-                            penalty333,
-                            isDone: !!doneDate
-                        });
-
-                        totalPenalty += penalty;
-                        totalPenalty333 += penalty333;
-                    }
+                const days = Math.ceil((payment.date - currentDate) / (1000 * 60 * 60 * 24));
+                if (days > 0 && remainingDebt > 0) {
+                    const penalty = remainingDebt * (yearRate / 100) * (days / 365);
+                    const penalty333 = remainingDebt * (keyRate * 2 / 100) * (days / 365);
+                    results.push({
+                        debt: remainingDebt,
+                        startDate: currentDate.toISOString().split('T')[0],
+                        endDate: payment.date.toISOString().split('T')[0],
+                        days,
+                        penalty,
+                        penalty333,
+                        paymentAmount: payment.amount
+                    });
+                    totalPenalty += penalty;
+                    totalPenalty333 += penalty333;
                 }
 
-                if (results.length === 0) {
-                    showCalcError('Заполните данные хотя бы для одного периода');
-                    return;
-                }
+                remainingDebt = Math.max(0, remainingDebt - payment.amount);
+                currentDate = new Date(payment.date);
             }
 
-            // Render results
+            // Последний период (от последнего платежа до даты окончания)
+            if (currentDate < finalDate && remainingDebt > 0) {
+                const days = Math.ceil((finalDate - currentDate) / (1000 * 60 * 60 * 24));
+                const penalty = remainingDebt * (yearRate / 100) * (days / 365);
+                const penalty333 = remainingDebt * (keyRate * 2 / 100) * (days / 365);
+                results.push({
+                    debt: remainingDebt,
+                    startDate: currentDate.toISOString().split('T')[0],
+                    endDate: endDate,
+                    days,
+                    penalty,
+                    penalty333,
+                    paymentAmount: null
+                });
+                totalPenalty += penalty;
+                totalPenalty333 += penalty333;
+            }
+
+            // Если нет периодов (нет просрочки)
+            if (results.length === 0) {
+                showCalcError('Нет периодов для расчёта неустойки');
+                return;
+            }
+
+            // Отображаем результаты
             const detailsHtml = results.map((r, i) => `
                 <div style="background: #F4F7F9; padding: 10px; border-radius: 6px; margin-bottom: 8px; font-size: 12px;">
                     <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-                        <span style="color: #8899A6;">${results.length > 1 ? `#${i + 1}: ` : ''}${r.amount.toLocaleString('ru-RU')} ₽</span>
+                        <span style="color: #1E3A5F; font-weight: 500;">Долг: ${r.debt.toLocaleString('ru-RU')} ₽</span>
                         <span style="color: #1E3A5F; font-weight: 600;">${r.penalty.toLocaleString('ru-RU', {maximumFractionDigits: 2})} ₽</span>
                     </div>
                     <div style="color: #8899A6; font-size: 11px;">
                         ${formatDate(r.startDate)} — ${formatDate(r.endDate)} (${r.days} дн.)
-                        ${r.isDone ? '<span style="color: #48BB78;"> ✓ исполнено</span>' : ''}
                     </div>
+                    ${r.paymentAmount ? `<div style="color: #48BB78; font-size: 11px; margin-top: 4px;">↓ Платёж: ${r.paymentAmount.toLocaleString('ru-RU')} ₽</div>` : ''}
                 </div>
             `).join('');
 
+            const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+            const summaryHtml = `
+                <div style="background: #E8F5E9; padding: 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px;">
+                    <div>Начальный долг: <b>${totalDebt.toLocaleString('ru-RU')} ₽</b></div>
+                    <div>Оплачено: <b>${totalPaid.toLocaleString('ru-RU')} ₽</b></div>
+                    <div>Остаток: <b>${(totalDebt - totalPaid).toLocaleString('ru-RU')} ₽</b></div>
+                </div>
+            `;
+
             document.getElementById('calcResultDetails').innerHTML = `
-                <div class="calc-result-item" style="border-bottom: none; padding-bottom: 0;">
+                <div class="calc-result-item" style="border-bottom: none; padding-bottom: 5px;">
                     <span class="label">Ставка</span>
                     <span class="value">${rateLabel}</span>
                 </div>
+                ${summaryHtml}
+                <div style="font-size: 12px; font-weight: 500; color: #1E3A5F; margin: 10px 0 5px;">Расчёт по периодам:</div>
                 ${detailsHtml}
             `;
 
@@ -1996,19 +2019,15 @@
         }
 
         function clearCalculator() {
-            document.getElementById('calcType').value = 'simple';
-            document.getElementById('simpleCalc').style.display = 'block';
-            document.getElementById('periodsCalc').style.display = 'none';
             document.getElementById('calcDebt').value = '';
             document.getElementById('calcStartDate').value = '';
             document.getElementById('calcEndDate').value = new Date().toISOString().split('T')[0];
-            document.getElementById('calcEndDatePeriods').value = new Date().toISOString().split('T')[0];
             document.getElementById('calcRateType').value = 'contract';
             document.getElementById('calcCustomRate').value = '';
             document.getElementById('customRateRow').style.display = 'block';
             document.getElementById('calcResult').style.display = 'none';
-            document.getElementById('periodsList').innerHTML = '';
-            calcPeriods = [];
+            document.getElementById('paymentsList').innerHTML = '';
+            calcPayments = [];
             hideCalcError();
         }
 

@@ -173,17 +173,27 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
     if not client:
         raise Exception("Claude API недоступен. Проверьте ANTHROPIC_API_KEY")
 
-    message = client.messages.create(
-        model=model_id,
-        max_tokens=8192,
-        system=system_prompt,
-        messages=[
-            {"role": "user", "content": user_prompt}
-        ]
-    )
-
-    text = message.content[0].text
-    return clean_markdown(text)
+    try:
+        message = client.messages.create(
+            model=model_id,
+            max_tokens=8192,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": user_prompt}
+            ]
+        )
+        text = message.content[0].text
+        return clean_markdown(text)
+    except Exception as e:
+        error_msg = str(e)
+        if "overloaded" in error_msg.lower():
+            raise Exception("Claude API перегружен. Попробуйте позже или используйте другую модель.")
+        elif "rate" in error_msg.lower():
+            raise Exception("Превышен лимит запросов Claude. Подождите минуту.")
+        elif "invalid" in error_msg.lower() and "key" in error_msg.lower():
+            raise Exception("Неверный API ключ Claude.")
+        else:
+            raise Exception(f"Ошибка Claude: {error_msg[:200]}")
 
 
 class handler(BaseHTTPRequestHandler):
@@ -256,13 +266,24 @@ class handler(BaseHTTPRequestHandler):
             }).encode())
 
         except Exception as e:
-            self.send_response(500)
-            self.send_header('Content-Type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            self.wfile.write(json.dumps({
-                "error": f"Ошибка AI: {str(e)}"
-            }).encode())
+            error_msg = str(e)
+            # Убираем спецсимволы которые могут сломать JSON
+            error_msg = error_msg.replace('\n', ' ').replace('\r', ' ')[:500]
+            try:
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": f"Ошибка AI: {error_msg}"
+                }, ensure_ascii=False).encode('utf-8'))
+            except Exception:
+                # Fallback если что-то совсем пошло не так
+                self.send_response(500)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(b'{"error": "Internal server error"}')
 
     def do_OPTIONS(self):
         self.send_response(200)
