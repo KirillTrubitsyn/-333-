@@ -6,6 +6,7 @@ import re
 # API Keys
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # Gemini setup
 import google.generativeai as genai
@@ -33,6 +34,20 @@ def get_anthropic_client():
             timeout=55.0  # 55 сек (в пределах 60 сек Vercel)
         )
     return anthropic_client
+
+
+# OpenAI setup - lazy import
+openai_client = None
+
+def get_openai_client():
+    global openai_client
+    if openai_client is None and OPENAI_API_KEY:
+        from openai import OpenAI
+        openai_client = OpenAI(
+            api_key=OPENAI_API_KEY,
+            timeout=55.0
+        )
+    return openai_client
 
 
 def compress_text(text: str) -> str:
@@ -203,6 +218,35 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
             raise Exception(f"Ошибка Claude: {str(e)[:200]}")
 
 
+def call_openai(system_prompt: str, user_prompt: str, model_id: str) -> str:
+    """Вызов OpenAI API"""
+    client = get_openai_client()
+    if not client:
+        raise Exception("OpenAI API недоступен. Проверьте OPENAI_API_KEY")
+
+    try:
+        response = client.chat.completions.create(
+            model=model_id,
+            max_tokens=3072,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ]
+        )
+        text = response.choices[0].message.content
+        return clean_markdown(text)
+    except Exception as e:
+        error_msg = str(e).lower()
+        if "timeout" in error_msg or "timed out" in error_msg:
+            raise Exception("OpenAI API не ответил вовремя. Попробуйте другую модель.")
+        elif "rate" in error_msg:
+            raise Exception("Превышен лимит запросов OpenAI. Подождите минуту.")
+        elif "invalid" in error_msg and "key" in error_msg:
+            raise Exception("Неверный API ключ OpenAI.")
+        else:
+            raise Exception(f"Ошибка OpenAI: {str(e)[:200]}")
+
+
 class handler(BaseHTTPRequestHandler):
     def do_POST(self):
         try:
@@ -229,6 +273,9 @@ class handler(BaseHTTPRequestHandler):
 
             # Проверяем доступность API
             is_claude = model.startswith('claude')
+            is_openai = model.startswith('gpt') or model.startswith('o1') or model.startswith('o3')
+            is_gemini = not is_claude and not is_openai
+
             if is_claude and not ANTHROPIC_API_KEY:
                 self.send_response(503)
                 self.send_header('Content-Type', 'application/json')
@@ -239,7 +286,17 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
-            if not is_claude and not GEMINI_API_KEY:
+            if is_openai and not OPENAI_API_KEY:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "OpenAI API не настроен. Добавьте OPENAI_API_KEY в Vercel"
+                }).encode())
+                return
+
+            if is_gemini and not GEMINI_API_KEY:
                 self.send_response(503)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
@@ -260,6 +317,8 @@ class handler(BaseHTTPRequestHandler):
             # Вызываем нужную модель
             if is_claude:
                 arguments_text = call_claude(system_prompt, user_prompt, model)
+            elif is_openai:
+                arguments_text = call_openai(system_prompt, user_prompt, model)
             else:
                 arguments_text = call_gemini(system_prompt, user_prompt)
 
