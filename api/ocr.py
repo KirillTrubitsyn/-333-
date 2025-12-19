@@ -24,7 +24,8 @@ SAFETY_SETTINGS = {
 def extract_text_from_image(image_base64: str, filename: str) -> str:
     """Извлечение текста из изображения через Gemini Vision"""
 
-    model = genai.GenerativeModel(model_name="gemini-2.5-pro")
+    # Используем Flash модель для OCR - в 10 раз дешевле, качество такое же
+    model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
     # Определяем MIME тип
     extension = filename.lower().split('.')[-1] if '.' in filename else 'png'

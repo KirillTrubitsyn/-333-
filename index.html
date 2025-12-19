@@ -966,6 +966,63 @@
         let claimFiles = [], responseFiles = [], isEditing = false, generationStartTime = null;
         let stats = JSON.parse(localStorage.getItem('generationStats') || '{"total":0,"times":[],"models":{}}');
 
+        // === Кэширование результатов для экономии API ===
+        const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа
+        const CACHE_PREFIX = 'gen_cache_';
+
+        async function hashText(text) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').substring(0, 32);
+        }
+
+        async function getCachedResult(claimText, responseText, model) {
+            const key = CACHE_PREFIX + await hashText(claimText + '|' + responseText + '|' + model);
+            const cached = localStorage.getItem(key);
+            if (!cached) return null;
+            try {
+                const { result, timestamp, modelUsed } = JSON.parse(cached);
+                if (Date.now() - timestamp > CACHE_TTL) {
+                    localStorage.removeItem(key);
+                    return null;
+                }
+                return { result, modelUsed };
+            } catch { return null; }
+        }
+
+        async function setCachedResult(claimText, responseText, model, result, modelUsed) {
+            const key = CACHE_PREFIX + await hashText(claimText + '|' + responseText + '|' + model);
+            try {
+                localStorage.setItem(key, JSON.stringify({ result, modelUsed, timestamp: Date.now() }));
+                cleanOldCache();
+            } catch (e) { console.warn('Cache write failed:', e); }
+        }
+
+        function cleanOldCache() {
+            const keys = Object.keys(localStorage).filter(k => k.startsWith(CACHE_PREFIX));
+            if (keys.length > 20) { // Храним максимум 20 кэшированных результатов
+                const items = keys.map(k => {
+                    try { return { key: k, ts: JSON.parse(localStorage.getItem(k)).timestamp }; }
+                    catch { return { key: k, ts: 0 }; }
+                }).sort((a, b) => a.ts - b.ts);
+                items.slice(0, keys.length - 20).forEach(i => localStorage.removeItem(i.key));
+            }
+        }
+
+        // === Сжатие текста для экономии токенов ===
+        function compressText(text) {
+            if (!text) return '';
+            return text
+                .replace(/\r\n/g, '\n')
+                .replace(/\n{3,}/g, '\n\n')
+                .replace(/[ \t]{2,}/g, ' ')
+                .replace(/^[ \t]+/gm, '')
+                .replace(/[ \t]+$/gm, '')
+                .trim();
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadRates(); loadHistory(); loadTemplates(); updateStats(); loadDraft(); loadComparisonSelectors();
             setInterval(saveDraft, 30000);
@@ -1302,38 +1359,62 @@
 
                 if (!finalClaimText.trim()) throw new Error('Загрузите иск или введите его текст');
 
+                // Сжатие текста для экономии токенов
+                finalClaimText = compressText(finalClaimText);
+                finalResponseText = compressText(finalResponseText);
+
                 lastInputData = { claim_text: finalClaimText, response_text: finalResponseText, user_comments: userComments };
 
-                // Step 3: AI Generation
-                setProgress(3, 60, `Генерация аргументов...`, MODEL_NAMES[modelToUse], {
-                    showDetails: true,
-                    filesTotal: totalFiles,
-                    filesProcessed: processedFiles,
-                    stage: `Модель: ${MODEL_NAMES[modelToUse]}`
-                });
+                // Проверяем кэш
+                setProgress(3, 55, `Проверка кэша...`, '', { showDetails: false });
+                const cached = await getCachedResult(finalClaimText, finalResponseText, modelToUse);
 
-                const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})` : '';
-                const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
+                let argumentsText, actualModel;
 
-                setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.error || 'Ошибка');
+                if (cached) {
+                    // Найден кэшированный результат - бесплатно!
+                    setProgress(4, 100, 'Готово! (из кэша)', 'Кэш', { showDetails: false });
+                    argumentsText = cached.result;
+                    actualModel = cached.modelUsed;
+                    console.log('💰 Использован кэш - API не вызывался');
+                } else {
+                    // Step 3: AI Generation
+                    setProgress(3, 60, `Генерация аргументов...`, MODEL_NAMES[modelToUse], {
+                        showDetails: true,
+                        filesTotal: totalFiles,
+                        filesProcessed: processedFiles,
+                        stage: `Модель: ${MODEL_NAMES[modelToUse]}`
+                    });
 
-                setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
+                    const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})` : '';
+                    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
+
+                    setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
+                    const result = await response.json();
+                    if (!response.ok) throw new Error(result.error || 'Ошибка');
+
+                    argumentsText = result.arguments_text;
+                    actualModel = result.model_used || modelToUse;
+
+                    // Сохраняем в кэш
+                    await setCachedResult(finalClaimText, finalResponseText, modelToUse, argumentsText, actualModel);
+                    setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
+                }
+
                 const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
 
                 setTimeout(() => {
                     hideProgress();
-                    lastResult = result.arguments_text;
-                    lastUsedModel = result.model_used || modelToUse;
-                    document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
-                    document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.`;
+                    lastResult = argumentsText;
+                    lastUsedModel = actualModel;
+                    document.getElementById('modelBadge').textContent = (cached ? '💾 ' : '') + (MODEL_NAMES[lastUsedModel] || lastUsedModel);
+                    document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.` + (cached ? ' (кэш)' : '');
                     outputBadges.style.display = 'block';
-                    output.textContent = result.arguments_text;
+                    output.textContent = argumentsText;
                     output.classList.remove('output-empty');
                     output.style.display = 'block';
                     actionButtons.style.display = 'flex';
-                    saveToHistory(result.arguments_text, lastUsedModel);
+                    saveToHistory(argumentsText, lastUsedModel);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
             } catch (error) { hideProgress(); errorBox.textContent = '❌ ' + error.message; errorBox.classList.add('active'); output.style.display = 'block'; } finally { analyzeBtn.disabled = false; }
