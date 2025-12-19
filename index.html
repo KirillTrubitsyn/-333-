@@ -1505,6 +1505,7 @@
         async function downloadPdf() {
             const { jsPDF } = window.jspdf;
             const outputEl = document.getElementById('output');
+            const text = outputEl.textContent;
 
             // Create a temporary container for PDF rendering
             const tempDiv = document.createElement('div');
@@ -1512,18 +1513,25 @@
                 position: absolute;
                 left: -9999px;
                 top: 0;
-                width: 800px;
-                padding: 40px;
+                width: 550px;
+                padding: 30px;
                 background: white;
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                font-size: 14px;
-                line-height: 1.6;
+                font-size: 11px;
+                line-height: 1.5;
                 color: #000;
                 white-space: pre-wrap;
                 word-wrap: break-word;
             `;
-            tempDiv.textContent = outputEl.textContent;
+            tempDiv.textContent = text;
             document.body.appendChild(tempDiv);
+
+            const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+            const pageWidthMm = pdf.internal.pageSize.getWidth();
+            const pageHeightMm = pdf.internal.pageSize.getHeight();
+            const marginMm = 10;
+            const contentWidthMm = pageWidthMm - marginMm * 2;
+            const contentHeightMm = pageHeightMm - marginMm * 2;
 
             try {
                 const canvas = await html2canvas(tempDiv, {
@@ -1533,26 +1541,30 @@
                     backgroundColor: '#ffffff'
                 });
 
-                const imgData = canvas.toDataURL('image/jpeg', 0.95);
-                const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                // Calculate how much canvas height fits on one page
+                const pxPerMm = canvas.width / contentWidthMm;
+                const pageHeightPx = contentHeightMm * pxPerMm;
+                const totalPages = Math.ceil(canvas.height / pageHeightPx);
 
-                const pageWidth = pdf.internal.pageSize.getWidth();
-                const pageHeight = pdf.internal.pageSize.getHeight();
-                const margin = 10;
-                const imgWidth = pageWidth - margin * 2;
-                const imgHeight = (canvas.height * imgWidth) / canvas.width;
+                for (let page = 0; page < totalPages; page++) {
+                    if (page > 0) pdf.addPage();
 
-                let heightLeft = imgHeight;
-                let position = margin;
+                    // Calculate source coordinates for this page slice
+                    const srcY = page * pageHeightPx;
+                    const srcHeight = Math.min(pageHeightPx, canvas.height - srcY);
 
-                pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
-                heightLeft -= (pageHeight - margin * 2);
+                    // Create a cropped canvas for this page
+                    const pageCanvas = document.createElement('canvas');
+                    pageCanvas.width = canvas.width;
+                    pageCanvas.height = srcHeight;
+                    const ctx = pageCanvas.getContext('2d');
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+                    ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
 
-                while (heightLeft > 0) {
-                    position = heightLeft - imgHeight + margin;
-                    pdf.addPage();
-                    pdf.addImage(imgData, 'JPEG', margin, position, imgWidth, imgHeight);
-                    heightLeft -= (pageHeight - margin * 2);
+                    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.92);
+                    const imgHeightMm = srcHeight / pxPerMm;
+                    pdf.addImage(pageImgData, 'JPEG', marginMm, marginMm, contentWidthMm, imgHeightMm);
                 }
 
                 pdf.save('arguments_333.pdf');
