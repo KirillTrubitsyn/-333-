@@ -1871,7 +1871,9 @@
                 output.classList.remove('output-empty');
                 output.style.display = 'block';
                 document.getElementById('actionButtons').style.display = 'flex';
-                if (lastUsedModel) { document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel; document.getElementById('outputBadges').style.display = 'block'; }
+                document.getElementById('modelBadge').textContent = '📜 ' + (MODEL_NAMES[lastUsedModel] || lastUsedModel || 'История');
+                document.getElementById('timeBadge').textContent = history[index].time ? `⏱️ ${history[index].time} сек.` : '';
+                document.getElementById('outputBadges').style.display = 'block';
             }
         }
 
