@@ -1391,7 +1391,7 @@
                     const response = await fetchWithTimeout('/api/ocr', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg`, model: selectedModel })
+                        body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg` })
                     }, 30000);
                     const result = await response.json();
                     if (response.ok && result.text) {
@@ -1411,7 +1411,7 @@
         async function recognizeImage(file) {
             let imageData = await fileToBase64(file);
             if (file.size > 2 * 1024 * 1024) imageData = await compressImage(imageData);
-            const response = await fetchWithTimeout('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name, model: selectedModel }) }, 30000);
+            const response = await fetchWithTimeout('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name }) }, 30000);
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Ошибка OCR');
             return result.text;
