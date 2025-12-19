@@ -63,16 +63,22 @@
             display: flex;
             background: #F4F7F9;
             border-bottom: 1px solid #E1E8ED;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
         }
+        .tabs-container::-webkit-scrollbar { display: none; }
         .main-tab {
-            padding: 12px 24px;
+            padding: 12px 16px;
             cursor: pointer;
             border: none;
             background: none;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 500;
             color: #4A5568;
             border-bottom: 3px solid transparent;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
         .main-tab:hover { color: #1E3A5F; }
         .main-tab.active { color: #1E3A5F; border-bottom-color: #C9A227; background: #FAFBFC; }
