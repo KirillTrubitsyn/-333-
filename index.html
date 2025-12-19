@@ -726,7 +726,7 @@
                                 <div class="model-name">Claude Opus 4.5</div>
                                 <div class="model-desc">Anthropic, мощный</div>
                             </div>
-                            <div class="model-option" data-model="gpt-5.2" onclick="selectModel(this)">
+                            <div class="model-option" data-model="gpt-5.2-instant" onclick="selectModel(this)">
                                 <div class="model-name">ChatGPT 5.2</div>
                                 <div class="model-desc">OpenAI, универсальный</div>
                             </div>
@@ -960,7 +960,7 @@
                         <div class="model-name">Claude Opus 4.5</div>
                         <div class="model-desc">Anthropic, мощный</div>
                     </div>
-                    <div class="model-option" data-model="gpt-5.2" onclick="selectAndRegenerate('gpt-5.2')">
+                    <div class="model-option" data-model="gpt-5.2-instant" onclick="selectAndRegenerate('gpt-5.2-instant')">
                         <div class="model-name">ChatGPT 5.2</div>
                         <div class="model-desc">OpenAI, универсальный</div>
                     </div>
@@ -985,8 +985,8 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const MAX_FILES = 3, MAX_FILE_SIZE = 10 * 1024 * 1024;
-        const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5', 'claude-opus-4-5-20251101': 'Claude Opus 4.5', 'gpt-5.2': 'ChatGPT 5.2'};
-        const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-5-20250929': 'Sonnet45', 'claude-opus-4-5-20251101': 'Opus45', 'gpt-5.2': 'GPT52'};
+        const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5', 'claude-opus-4-5-20251101': 'Claude Opus 4.5', 'gpt-5.2-instant': 'ChatGPT 5.2'};
+        const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-5-20250929': 'Sonnet45', 'claude-opus-4-5-20251101': 'Opus45', 'gpt-5.2-instant': 'GPT52'};
 
         function extractDisputeInfo(text) {
             if (!text) return { org: '', disputeType: '' };
@@ -1391,7 +1391,7 @@
                     const response = await fetchWithTimeout('/api/ocr', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg` })
+                        body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg`, model: selectedModel })
                     }, 30000);
                     const result = await response.json();
                     if (response.ok && result.text) {
@@ -1411,7 +1411,7 @@
         async function recognizeImage(file) {
             let imageData = await fileToBase64(file);
             if (file.size > 2 * 1024 * 1024) imageData = await compressImage(imageData);
-            const response = await fetchWithTimeout('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name }) }, 30000);
+            const response = await fetchWithTimeout('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name, model: selectedModel }) }, 30000);
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Ошибка OCR');
             return result.text;
@@ -1600,7 +1600,7 @@
                     const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) }, apiTimeout);
 
                     setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
-                    if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Таймаут сервера. Claude модели требуют больше времени. Попробуйте Gemini или повторите позже.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
+                    if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                     const result = await response.json();
 
                     argumentsText = result.arguments_text;
@@ -1630,7 +1630,7 @@
             } catch (error) {
                 hideProgress();
                 let msg = error.message;
-                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил. Claude API перегружен — попробуйте Gemini или повторите через минуту.';
+                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил вовремя. Попробуйте другую модель или повторите через минуту.';
                 errorBox.textContent = '❌ ' + msg;
                 errorBox.classList.add('active');
                 output.style.display = 'block';
@@ -1677,7 +1677,7 @@
                 const apiTimeout = modelToUse.includes('opus') ? 120000 : 60000;  // Opus: 2 мин, остальные: 1 мин
                 const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) }, apiTimeout);
                 setProgress(3, 80, 'Получение ответа...', MODEL_NAMES[modelToUse], { showDetails: true, filesTotal: 0, filesProcessed: 0, stage: 'Формирование ответа' });
-                if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Таймаут сервера. Claude модели требуют больше времени. Попробуйте Gemini или повторите позже.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
+                if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
 
                 setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
@@ -1699,7 +1699,7 @@
             } catch (error) {
                 hideProgress();
                 let msg = error.message;
-                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил. Claude API перегружен — попробуйте Gemini или повторите через минуту.';
+                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил вовремя. Попробуйте другую модель или повторите через минуту.';
                 errorBox.textContent = '❌ ' + msg;
                 errorBox.classList.add('active');
                 output.style.display = 'block';

@@ -4,8 +4,10 @@ import os
 import base64
 from api.rate_limiter import get_client_ip, check_rate_limit, send_rate_limit_error, add_rate_limit_headers
 
-# API Key
+# API Keys
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 # Gemini setup
 import google.generativeai as genai
@@ -21,37 +23,7 @@ SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
-
-def extract_text_from_image(image_base64: str, filename: str) -> str:
-    """Извлечение текста из изображения через Gemini Vision"""
-
-    # Используем Gemini 3.0 Flash Preview для OCR
-    model = genai.GenerativeModel(model_name="gemini-3.0-flash-preview")
-
-    # Определяем MIME тип
-    extension = filename.lower().split('.')[-1] if '.' in filename else 'png'
-    mime_types = {
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'png': 'image/png',
-        'gif': 'image/gif',
-        'webp': 'image/webp',
-        'heic': 'image/heic',
-        'heif': 'image/heif'
-    }
-    mime_type = mime_types.get(extension, 'image/png')
-
-    # Убираем data URL prefix если есть
-    if ',' in image_base64:
-        image_base64 = image_base64.split(',')[1]
-
-    # Создаем содержимое для Vision API
-    image_part = {
-        "mime_type": mime_type,
-        "data": image_base64
-    }
-
-    prompt = """Ты — OCR-система для распознавания юридических документов на русском языке.
+OCR_PROMPT = """Ты — OCR-система для распознавания юридических документов на русском языке.
 
 ЗАДАЧА: Извлеки ВЕСЬ текст с изображения документа.
 
@@ -65,12 +37,34 @@ def extract_text_from_image(image_base64: str, filename: str) -> str:
 
 Верни ТОЛЬКО распознанный текст документа."""
 
+
+def get_mime_type(filename: str) -> str:
+    extension = filename.lower().split('.')[-1] if '.' in filename else 'png'
+    mime_types = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'heic': 'image/heic',
+        'heif': 'image/heif'
+    }
+    return mime_types.get(extension, 'image/png')
+
+
+def ocr_with_gemini(image_base64: str, filename: str) -> str:
+    """OCR через Gemini Vision"""
+    model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+
+    mime_type = get_mime_type(filename)
+    if ',' in image_base64:
+        image_base64 = image_base64.split(',')[1]
+
+    image_part = {"mime_type": mime_type, "data": image_base64}
+
     response = model.generate_content(
-        [prompt, image_part],
-        generation_config=genai.GenerationConfig(
-            temperature=0.1,
-            max_output_tokens=8192,
-        ),
+        [OCR_PROMPT, image_part],
+        generation_config=genai.GenerationConfig(temperature=0.1, max_output_tokens=8192),
         safety_settings=SAFETY_SETTINGS
     )
 
@@ -82,7 +76,71 @@ def extract_text_from_image(image_base64: str, filename: str) -> str:
             if hasattr(candidate, 'content') and candidate.content:
                 if hasattr(candidate.content, 'parts') and candidate.content.parts:
                     return candidate.content.parts[0].text
-        raise Exception("Не удалось распознать текст на изображении")
+        raise Exception("Не удалось распознать текст")
+
+
+def ocr_with_claude(image_base64: str, filename: str) -> str:
+    """OCR через Claude Vision"""
+    import anthropic
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=25.0)
+
+    mime_type = get_mime_type(filename)
+    if ',' in image_base64:
+        image_base64 = image_base64.split(',')[1]
+
+    message = client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=4096,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image", "source": {"type": "base64", "media_type": mime_type, "data": image_base64}},
+                {"type": "text", "text": OCR_PROMPT}
+            ]
+        }]
+    )
+    return message.content[0].text
+
+
+def ocr_with_openai(image_base64: str, filename: str) -> str:
+    """OCR через OpenAI Vision"""
+    from openai import OpenAI
+    client = OpenAI(api_key=OPENAI_API_KEY, timeout=25.0)
+
+    mime_type = get_mime_type(filename)
+    if ',' in image_base64:
+        image_base64 = image_base64.split(',')[1]
+
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        max_tokens=4096,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{image_base64}"}},
+                {"type": "text", "text": OCR_PROMPT}
+            ]
+        }]
+    )
+    return response.choices[0].message.content
+
+
+def extract_text_from_image(image_base64: str, filename: str, model: str = "gemini") -> str:
+    """Извлечение текста из изображения через выбранную модель"""
+
+    if model.startswith('claude'):
+        if not ANTHROPIC_API_KEY:
+            raise Exception("Claude API не настроен")
+        return ocr_with_claude(image_base64, filename)
+    elif model.startswith('gpt'):
+        if not OPENAI_API_KEY:
+            raise Exception("OpenAI API не настроен")
+        return ocr_with_openai(image_base64, filename)
+    else:
+        # Gemini по умолчанию
+        if not GEMINI_API_KEY:
+            raise Exception("Gemini API не настроен")
+        return ocr_with_gemini(image_base64, filename)
 
 
 class handler(BaseHTTPRequestHandler):
@@ -95,54 +153,38 @@ class handler(BaseHTTPRequestHandler):
                 send_rate_limit_error(self, rate_info)
                 return
 
-            if not GEMINI_API_KEY:
-                self.send_response(503)
-                self.send_header('Content-Type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                self.wfile.write(json.dumps({
-                    "error": "Gemini API не настроен. Добавьте GEMINI_API_KEY в Vercel"
-                }).encode())
-                return
-
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
 
             image_base64 = data.get('image', '')
             filename = data.get('filename', 'image.png')
+            model = data.get('model', 'gemini')
 
             if not image_base64:
                 self.send_response(400)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
-                self.wfile.write(json.dumps({
-                    "error": "Изображение не предоставлено"
-                }).encode())
+                self.wfile.write(json.dumps({"error": "Изображение не предоставлено"}).encode())
                 return
 
-            # Распознаём текст
-            extracted_text = extract_text_from_image(image_base64, filename)
+            # Распознаём текст через выбранную модель
+            extracted_text = extract_text_from_image(image_base64, filename, model)
 
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             add_rate_limit_headers(self, rate_info)
             self.end_headers()
-            self.wfile.write(json.dumps({
-                "text": extracted_text,
-                "filename": filename
-            }).encode())
+            self.wfile.write(json.dumps({"text": extracted_text, "filename": filename}).encode())
 
         except Exception as e:
             self.send_response(500)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({
-                "error": f"Ошибка распознавания: {str(e)}"
-            }).encode())
+            self.wfile.write(json.dumps({"error": f"Ошибка распознавания: {str(e)}"}).encode())
 
     def do_OPTIONS(self):
         self.send_response(200)
