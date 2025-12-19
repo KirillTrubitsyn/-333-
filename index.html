@@ -726,8 +726,8 @@
                                 <div class="model-name">Claude Opus 4.5</div>
                                 <div class="model-desc">Anthropic, мощный</div>
                             </div>
-                            <div class="model-option" data-model="gpt-5.2-instant" onclick="selectModel(this)">
-                                <div class="model-name">ChatGPT 5.2</div>
+                            <div class="model-option" data-model="gpt-4o" onclick="selectModel(this)">
+                                <div class="model-name">ChatGPT 4o</div>
                                 <div class="model-desc">OpenAI, универсальный</div>
                             </div>
                         </div>
@@ -960,8 +960,8 @@
                         <div class="model-name">Claude Opus 4.5</div>
                         <div class="model-desc">Anthropic, мощный</div>
                     </div>
-                    <div class="model-option" data-model="gpt-5.2-instant" onclick="selectAndRegenerate('gpt-5.2-instant')">
-                        <div class="model-name">ChatGPT 5.2</div>
+                    <div class="model-option" data-model="gpt-4o" onclick="selectAndRegenerate('gpt-4o')">
+                        <div class="model-name">ChatGPT 4o</div>
                         <div class="model-desc">OpenAI, универсальный</div>
                     </div>
                 </div>
@@ -985,8 +985,8 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         const MAX_FILES = 3, MAX_FILE_SIZE = 10 * 1024 * 1024;
-        const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5', 'claude-opus-4-5-20251101': 'Claude Opus 4.5', 'gpt-5.2-instant': 'ChatGPT 5.2'};
-        const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-5-20250929': 'Sonnet45', 'claude-opus-4-5-20251101': 'Opus45', 'gpt-5.2-instant': 'GPT52'};
+        const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5', 'claude-opus-4-5-20251101': 'Claude Opus 4.5', 'gpt-4o': 'ChatGPT 4o'};
+        const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-5-20250929': 'Sonnet45', 'claude-opus-4-5-20251101': 'Opus45', 'gpt-4o': 'GPT4o'};
 
         function extractDisputeInfo(text) {
             if (!text) return { org: '', disputeType: '' };
