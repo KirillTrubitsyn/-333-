@@ -32,7 +32,7 @@ def get_anthropic_client():
         import anthropic
         anthropic_client = anthropic.Anthropic(
             api_key=ANTHROPIC_API_KEY,
-            timeout=55.0  # 55 сек (в пределах 60 сек Vercel)
+            timeout=115.0  # 115 сек (в пределах 120 сек Vercel)
         )
     return anthropic_client
 
@@ -46,7 +46,7 @@ def get_openai_client():
         from openai import OpenAI
         openai_client = OpenAI(
             api_key=OPENAI_API_KEY,
-            timeout=55.0
+            timeout=115.0  # 115 сек (в пределах 120 сек Vercel)
         )
     return openai_client
 
@@ -195,7 +195,7 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
     try:
         message = client.messages.create(
             model=model_id,
-            max_tokens=2048,
+            max_tokens=4096,
             system=system_prompt,
             messages=[
                 {"role": "user", "content": user_prompt}
@@ -228,7 +228,7 @@ def call_openai(system_prompt: str, user_prompt: str, model_id: str) -> str:
     try:
         response = client.chat.completions.create(
             model=model_id,
-            max_completion_tokens=2048,
+            max_completion_tokens=4096,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
