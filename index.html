@@ -97,8 +97,9 @@
 
         .document-block h3 .required { color: #C9A227; }
         .document-block h3 .optional { font-weight: 400; font-size: 11px; color: #8899A6; }
+        .document-block h3 .file-limit { font-weight: 400; font-size: 11px; color: #8899A6; margin-left: 8px; }
 
-        .input-tabs { display: flex; gap: 8px; margin-bottom: 12px; }
+        .input-tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 
         .tab-btn {
             padding: 6px 12px;
@@ -126,6 +127,7 @@
             text-align: center;
             cursor: pointer;
             background: #FAFBFC;
+            position: relative;
         }
 
         .file-upload:hover { border-color: #C9A227; background: #FFFDF5; }
@@ -133,7 +135,24 @@
         .file-upload input[type="file"] { display: none; }
         .file-upload .upload-icon { font-size: 24px; margin-bottom: 8px; }
         .file-upload .upload-text { font-size: 12px; color: #8899A6; }
-        .file-upload .file-name { font-size: 12px; color: #48BB78; font-weight: 600; margin-top: 8px; }
+        .file-upload .file-list { font-size: 12px; color: #48BB78; font-weight: 600; margin-top: 8px; text-align: left; }
+        .file-upload .file-item { padding: 4px 0; display: flex; align-items: center; gap: 6px; }
+        .file-upload .file-item .remove-file { color: #E53E3E; cursor: pointer; font-size: 14px; }
+
+        .upload-buttons { display: flex; gap: 8px; margin-top: 10px; justify-content: center; flex-wrap: wrap; }
+        .upload-btn {
+            padding: 8px 16px;
+            border: 1px solid #E1E8ED;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #4A5568;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .upload-btn:hover { background: #F4F7F9; border-color: #C9A227; }
 
         textarea, select {
             width: 100%;
@@ -312,6 +331,13 @@
 
         .footer .author { font-size: 11px; color: #8899A6; }
 
+        .processing-status {
+            font-size: 11px;
+            color: #8899A6;
+            margin-top: 8px;
+            font-style: italic;
+        }
+
         @media (max-width: 968px) {
             .main-content { grid-template-columns: 1fr; }
             .form-section, .output-section { max-height: none; border-right: none; }
@@ -332,18 +358,28 @@
                 <h2 class="section-title">Исходные документы</h2>
 
                 <div class="document-block">
-                    <h3>Иск о взыскании неустойки <span class="required">*</span></h3>
+                    <h3>Иск о взыскании неустойки <span class="required">*</span> <span class="file-limit">(до 3 файлов)</span></h3>
                     <div class="input-tabs">
-                        <button class="tab-btn active" onclick="switchTab('claim', 'file', this)">Файл</button>
+                        <button class="tab-btn active" onclick="switchTab('claim', 'file', this)">Файлы</button>
                         <button class="tab-btn" onclick="switchTab('claim', 'text', this)">Текст</button>
                     </div>
                     <div id="claim-file-tab" class="tab-content active">
-                        <div class="file-upload" onclick="document.getElementById('claimFile').click()">
-                            <input type="file" id="claimFile" accept=".txt,.rtf,.docx,.doc" onchange="handleFileSelect(this, 'claim')">
+                        <div class="file-upload" id="claim-upload-area">
+                            <input type="file" id="claimFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'claim')">
+                            <input type="file" id="claimCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'claim')" style="display:none">
                             <div class="upload-icon">📄</div>
-                            <div class="upload-text">Выберите файл (.docx, .txt, .rtf)</div>
-                            <div id="claim-file-name" class="file-name"></div>
+                            <div class="upload-text">DOCX, PDF, TXT, изображения</div>
+                            <div id="claim-file-list" class="file-list"></div>
                         </div>
+                        <div class="upload-buttons">
+                            <button type="button" class="upload-btn" onclick="document.getElementById('claimFiles').click()">
+                                📁 Выбрать файлы
+                            </button>
+                            <button type="button" class="upload-btn" onclick="document.getElementById('claimCamera').click()">
+                                📷 Сделать фото
+                            </button>
+                        </div>
+                        <div id="claim-processing" class="processing-status"></div>
                     </div>
                     <div id="claim-text-tab" class="tab-content">
                         <textarea id="claimText" placeholder="Вставьте текст иска..."></textarea>
@@ -351,18 +387,28 @@
                 </div>
 
                 <div class="document-block">
-                    <h3>Отзыв ответчика <span class="optional">(опционально)</span></h3>
+                    <h3>Отзыв ответчика <span class="optional">(опционально)</span> <span class="file-limit">(до 3 файлов)</span></h3>
                     <div class="input-tabs">
-                        <button class="tab-btn active" onclick="switchTab('response', 'file', this)">Файл</button>
+                        <button class="tab-btn active" onclick="switchTab('response', 'file', this)">Файлы</button>
                         <button class="tab-btn" onclick="switchTab('response', 'text', this)">Текст</button>
                     </div>
                     <div id="response-file-tab" class="tab-content active">
-                        <div class="file-upload" onclick="document.getElementById('responseFile').click()">
-                            <input type="file" id="responseFile" accept=".txt,.rtf,.docx,.doc" onchange="handleFileSelect(this, 'response')">
+                        <div class="file-upload" id="response-upload-area">
+                            <input type="file" id="responseFiles" multiple accept=".txt,.rtf,.docx,.doc,.pdf,.jpg,.jpeg,.png,.heic" onchange="handleMultiFileSelect(this, 'response')">
+                            <input type="file" id="responseCamera" accept="image/*" capture="environment" onchange="handleCameraCapture(this, 'response')" style="display:none">
                             <div class="upload-icon">📋</div>
-                            <div class="upload-text">Ходатайство о снижении (.docx, .txt)</div>
-                            <div id="response-file-name" class="file-name"></div>
+                            <div class="upload-text">Ходатайство о снижении</div>
+                            <div id="response-file-list" class="file-list"></div>
                         </div>
+                        <div class="upload-buttons">
+                            <button type="button" class="upload-btn" onclick="document.getElementById('responseFiles').click()">
+                                📁 Выбрать файлы
+                            </button>
+                            <button type="button" class="upload-btn" onclick="document.getElementById('responseCamera').click()">
+                                📷 Сделать фото
+                            </button>
+                        </div>
+                        <div id="response-processing" class="processing-status"></div>
                     </div>
                     <div id="response-text-tab" class="tab-content">
                         <textarea id="responseText" placeholder="Вставьте текст отзыва..."></textarea>
@@ -439,18 +485,27 @@
         </div>
     </div>
 
-    <!-- Библиотеки для работы с DOCX -->
+    <!-- Библиотеки -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 
     <script>
+        // PDF.js worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
         let cachedRates = [];
         let currentRate = null;
         let lastResult = '';
         let selectedModel = 'gemini-2.5-pro';
         let lastUsedModel = '';
         let lastInputData = null;
+
+        // Хранилище файлов (до 3 на каждый тип)
+        const MAX_FILES = 3;
+        let claimFiles = [];
+        let responseFiles = [];
 
         const MODEL_NAMES = {
             'gemini-2.5-pro': 'Gemini 2.5 Pro',
@@ -512,44 +567,212 @@
             document.getElementById(`${docType}-${tabType}-tab`).classList.add('active');
         }
 
-        function handleFileSelect(input, docType) {
-            const fileNameEl = document.getElementById(`${docType}-file-name`);
-            const uploadBox = input.parentElement;
+        function handleMultiFileSelect(input, docType) {
+            const files = Array.from(input.files);
+            const currentFiles = docType === 'claim' ? claimFiles : responseFiles;
+
+            // Проверяем лимит
+            if (currentFiles.length + files.length > MAX_FILES) {
+                alert(`Максимум ${MAX_FILES} файла`);
+                return;
+            }
+
+            // Добавляем файлы
+            files.forEach(file => {
+                if (docType === 'claim') {
+                    claimFiles.push(file);
+                } else {
+                    responseFiles.push(file);
+                }
+            });
+
+            updateFileList(docType);
+            input.value = ''; // Очищаем input для повторного выбора
+        }
+
+        function handleCameraCapture(input, docType) {
             if (input.files && input.files[0]) {
-                fileNameEl.textContent = '✓ ' + input.files[0].name;
-                uploadBox.classList.add('has-file');
+                const currentFiles = docType === 'claim' ? claimFiles : responseFiles;
+
+                if (currentFiles.length >= MAX_FILES) {
+                    alert(`Максимум ${MAX_FILES} файла`);
+                    return;
+                }
+
+                const file = input.files[0];
+                if (docType === 'claim') {
+                    claimFiles.push(file);
+                } else {
+                    responseFiles.push(file);
+                }
+
+                updateFileList(docType);
+            }
+            input.value = '';
+        }
+
+        function removeFile(docType, index) {
+            if (docType === 'claim') {
+                claimFiles.splice(index, 1);
             } else {
-                fileNameEl.textContent = '';
-                uploadBox.classList.remove('has-file');
+                responseFiles.splice(index, 1);
+            }
+            updateFileList(docType);
+        }
+
+        function updateFileList(docType) {
+            const files = docType === 'claim' ? claimFiles : responseFiles;
+            const listEl = document.getElementById(`${docType}-file-list`);
+            const uploadArea = document.getElementById(`${docType}-upload-area`);
+
+            if (files.length === 0) {
+                listEl.innerHTML = '';
+                uploadArea.classList.remove('has-file');
+            } else {
+                listEl.innerHTML = files.map((file, i) => `
+                    <div class="file-item">
+                        <span>${getFileIcon(file.name)} ${file.name}</span>
+                        <span class="remove-file" onclick="removeFile('${docType}', ${i})">✕</span>
+                    </div>
+                `).join('');
+                uploadArea.classList.add('has-file');
             }
         }
 
-        async function readFileAsText(file) {
-            const fileName = file.name.toLowerCase();
+        function getFileIcon(filename) {
+            const ext = filename.toLowerCase().split('.').pop();
+            if (['jpg', 'jpeg', 'png', 'heic'].includes(ext)) return '🖼️';
+            if (ext === 'pdf') return '📕';
+            if (['doc', 'docx'].includes(ext)) return '📘';
+            return '📄';
+        }
 
-            if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = async (e) => {
-                        try {
-                            const arrayBuffer = e.target.result;
-                            const result = await mammoth.extractRawText({ arrayBuffer });
-                            resolve(result.value);
-                        } catch (err) {
-                            reject(new Error('Ошибка чтения DOCX: ' + err.message));
-                        }
-                    };
-                    reader.onerror = (e) => reject(e);
-                    reader.readAsArrayBuffer(file);
-                });
+        // Чтение файлов разных форматов
+        async function readFileContent(file, statusEl) {
+            const fileName = file.name.toLowerCase();
+            const ext = fileName.split('.').pop();
+
+            // DOCX
+            if (ext === 'docx' || ext === 'doc') {
+                if (statusEl) statusEl.textContent = `Читаю ${file.name}...`;
+                return await readDocx(file);
             }
 
+            // PDF
+            if (ext === 'pdf') {
+                if (statusEl) statusEl.textContent = `Извлекаю текст из ${file.name}...`;
+                return await readPdf(file);
+            }
+
+            // Изображения - OCR через API
+            if (['jpg', 'jpeg', 'png', 'heic'].includes(ext)) {
+                if (statusEl) statusEl.textContent = `Распознаю текст на ${file.name}...`;
+                return await recognizeImage(file);
+            }
+
+            // TXT и другие текстовые
+            return await readTextFile(file);
+        }
+
+        async function readDocx(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+                        resolve(result.value);
+                    } catch (err) {
+                        reject(new Error('Ошибка чтения DOCX: ' + err.message));
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function readPdf(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
+                        let text = '';
+
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            const page = await pdf.getPage(i);
+                            const content = await page.getTextContent();
+                            const pageText = content.items.map(item => item.str).join(' ');
+                            text += pageText + '\n\n';
+                        }
+
+                        resolve(text.trim());
+                    } catch (err) {
+                        reject(new Error('Ошибка чтения PDF: ' + err.message));
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        async function readTextFile(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = (e) => reject(e);
+                reader.onerror = reject;
                 reader.readAsText(file, 'UTF-8');
             });
+        }
+
+        async function recognizeImage(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    try {
+                        const base64 = e.target.result.split(',')[1];
+
+                        const response = await fetch('/api/ocr', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                image: base64,
+                                filename: file.name
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (!response.ok) {
+                            throw new Error(result.error || 'Ошибка OCR');
+                        }
+
+                        resolve(result.text);
+                    } catch (err) {
+                        reject(new Error('Ошибка распознавания: ' + err.message));
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function processAllFiles(files, statusEl) {
+            const texts = [];
+
+            for (const file of files) {
+                try {
+                    const text = await readFileContent(file, statusEl);
+                    if (text && text.trim()) {
+                        texts.push(`--- ${file.name} ---\n${text}`);
+                    }
+                } catch (err) {
+                    console.error(`Error processing ${file.name}:`, err);
+                    texts.push(`--- ${file.name} ---\n[Ошибка чтения файла: ${err.message}]`);
+                }
+            }
+
+            if (statusEl) statusEl.textContent = '';
+            return texts.join('\n\n');
         }
 
         async function generateArguments(useModel = null) {
@@ -563,44 +786,48 @@
 
             const modelToUse = useModel || selectedModel;
 
-            const claimFile = document.getElementById('claimFile').files[0];
             const claimText = document.getElementById('claimText').value;
-            const responseFile = document.getElementById('responseFile').files[0];
             const responseText = document.getElementById('responseText').value;
             const userComments = document.getElementById('userComments').value;
 
             let finalClaimText = claimText;
             let finalResponseText = responseText;
 
-            try {
-                if (claimFile) finalClaimText = await readFileAsText(claimFile);
-                if (responseFile) finalResponseText = await readFileAsText(responseFile);
-            } catch (e) {
-                alert('Ошибка чтения файла');
-                return;
-            }
-
-            if (!finalClaimText.trim()) {
-                alert('Загрузите иск или введите его текст');
-                return;
-            }
-
-            // Сохраняем данные для перегенерации
-            lastInputData = {
-                claim_text: finalClaimText,
-                response_text: finalResponseText,
-                user_comments: userComments
-            };
-
             analyzeBtn.disabled = true;
             loading.classList.add('active');
-            loadingText.textContent = `Генерация (${MODEL_NAMES[modelToUse]})...`;
+            loadingText.textContent = 'Обработка файлов...';
             output.style.display = 'none';
             errorBox.classList.remove('active');
             actionButtons.style.display = 'none';
             modelBadge.style.display = 'none';
 
             try {
+                // Обрабатываем файлы
+                if (claimFiles.length > 0) {
+                    const claimStatus = document.getElementById('claim-processing');
+                    const filesText = await processAllFiles(claimFiles, claimStatus);
+                    finalClaimText = filesText + (claimText ? '\n\n' + claimText : '');
+                }
+
+                if (responseFiles.length > 0) {
+                    const responseStatus = document.getElementById('response-processing');
+                    const filesText = await processAllFiles(responseFiles, responseStatus);
+                    finalResponseText = filesText + (responseText ? '\n\n' + responseText : '');
+                }
+
+                if (!finalClaimText.trim()) {
+                    throw new Error('Загрузите иск или введите его текст');
+                }
+
+                // Сохраняем данные для перегенерации
+                lastInputData = {
+                    claim_text: finalClaimText,
+                    response_text: finalResponseText,
+                    user_comments: userComments
+                };
+
+                loadingText.textContent = `Генерация (${MODEL_NAMES[modelToUse]})...`;
+
                 let ratesInfo = 'Ставка ЦБ недоступна';
                 if (currentRate) {
                     ratesInfo = `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})`;
@@ -652,19 +879,16 @@
                 return;
             }
 
-            // Находим следующую модель
             const models = ['gemini-2.5-pro', 'claude-sonnet-4-20250514', 'claude-opus-4-5-20251101'];
             const currentIndex = models.indexOf(lastUsedModel);
             const nextIndex = (currentIndex + 1) % models.length;
             const nextModel = models[nextIndex];
 
-            // Выбираем её визуально
             document.querySelectorAll('.model-option').forEach(opt => {
                 opt.classList.toggle('selected', opt.dataset.model === nextModel);
             });
             selectedModel = nextModel;
 
-            // Генерируем с новой моделью, используя сохраненные данные
             generateWithSavedData(nextModel);
         }
 
@@ -731,12 +955,11 @@
         }
 
         function clearForm() {
-            ['claimFile', 'responseFile'].forEach(id => document.getElementById(id).value = '');
-            ['claim', 'response'].forEach(type => {
-                document.getElementById(`${type}-file-name`).textContent = '';
-                const upload = document.querySelector(`#${type}-file-tab .file-upload`);
-                if (upload) upload.classList.remove('has-file');
-            });
+            claimFiles = [];
+            responseFiles = [];
+            updateFileList('claim');
+            updateFileList('response');
+
             ['claimText', 'responseText', 'userComments'].forEach(id => document.getElementById(id).value = '');
 
             const output = document.getElementById('output');

@@ -6,6 +6,9 @@
     },
     "api/rates.py": {
       "maxDuration": 10
+    },
+    "api/ocr.py": {
+      "maxDuration": 30
     }
   },
   "rewrites": [
