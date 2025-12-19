@@ -1036,7 +1036,52 @@
 
         let cachedRates = [], currentRate = null, lastResult = '', selectedModel = 'gemini-3-pro-preview', lastUsedModel = '', lastInputData = null;
         let claimFiles = [], responseFiles = [], isEditing = false, generationStartTime = null;
+
+        // Кэш Object URLs для предотвращения утечки памяти
+        const objectUrlCache = new Map();
+
+        function getOrCreateObjectUrl(file) {
+            // Используем имя + размер + lastModified как ключ
+            const key = `${file.name}_${file.size}_${file.lastModified}`;
+            if (!objectUrlCache.has(key)) {
+                objectUrlCache.set(key, URL.createObjectURL(file));
+            }
+            return objectUrlCache.get(key);
+        }
+
+        function revokeFileObjectUrl(file) {
+            const key = `${file.name}_${file.size}_${file.lastModified}`;
+            if (objectUrlCache.has(key)) {
+                URL.revokeObjectURL(objectUrlCache.get(key));
+                objectUrlCache.delete(key);
+            }
+        }
+
+        function revokeAllObjectUrls(files) {
+            files.forEach(file => revokeFileObjectUrl(file));
+        }
         let stats = JSON.parse(localStorage.getItem('generationStats') || '{"total":0,"times":[],"models":{}}');
+
+        // === Fetch с таймаутом для предотвращения зависания ===
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 60000) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+            try {
+                const response = await fetch(url, {
+                    ...options,
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                return response;
+            } catch (error) {
+                clearTimeout(timeoutId);
+                if (error.name === 'AbortError') {
+                    throw new Error(`⏱️ Запрос превысил ${timeoutMs/1000} сек. Попробуйте ещё раз или выберите другую модель.`);
+                }
+                throw error;
+            }
+        }
 
         // === Кэширование результатов для экономии API ===
         const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 часа
@@ -1118,7 +1163,7 @@
 
         async function loadRates() {
             try {
-                const response = await fetch('/api/rates');
+                const response = await fetchWithTimeout('/api/rates', {}, 10000);
                 if (response.ok) {
                     const data = await response.json();
                     cachedRates = data.history || [];
@@ -1165,6 +1210,9 @@
         }
 
         function removeFile(docType, index) {
+            const files = docType === 'claim' ? claimFiles : responseFiles;
+            const file = files[index];
+            if (file) revokeFileObjectUrl(file);  // Освобождаем память
             if (docType === 'claim') claimFiles.splice(index, 1); else responseFiles.splice(index, 1);
             updateFileList(docType);
         }
@@ -1192,7 +1240,7 @@
                 `;
                 const items = files.map((file, i) => {
                     const isImage = file.type.startsWith('image/');
-                    const objectUrl = isImage ? URL.createObjectURL(file) : '';
+                    const objectUrl = isImage ? getOrCreateObjectUrl(file) : '';
                     const preview = isImage
                         ? `<img src="${objectUrl}"><span class="zoom-hint">🔍</span>`
                         : getFileIcon(file.name);
@@ -1209,8 +1257,10 @@
 
         function clearAllFiles(docType) {
             if (docType === 'claim') {
+                revokeAllObjectUrls(claimFiles);  // Освобождаем память
                 claimFiles = [];
             } else {
+                revokeAllObjectUrls(responseFiles);  // Освобождаем память
                 responseFiles = [];
             }
             updateFileList(docType);
@@ -1304,11 +1354,11 @@
                 const imageData = canvas.toDataURL('image/jpeg', 0.85).split(',')[1];
 
                 try {
-                    const response = await fetch('/api/ocr', {
+                    const response = await fetchWithTimeout('/api/ocr', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg` })
-                    });
+                    }, 30000);
                     const result = await response.json();
                     if (response.ok && result.text) {
                         texts.push(`--- Страница ${i} ---\n${result.text}`);
@@ -1327,7 +1377,7 @@
         async function recognizeImage(file) {
             let imageData = await fileToBase64(file);
             if (file.size > 2 * 1024 * 1024) imageData = await compressImage(imageData);
-            const response = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name }) });
+            const response = await fetchWithTimeout('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name }) }, 30000);
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Ошибка OCR');
             return result.text;
@@ -1512,7 +1562,7 @@
                     });
 
                     const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}% (с ${currentRate.date_from})` : '';
-                    const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
+                    const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) }, 60000);
 
                     setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
                     if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Таймаут сервера. Claude модели требуют больше времени. Попробуйте Gemini или повторите позже.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
@@ -1589,7 +1639,7 @@
 
             try {
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
-                const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) });
+                const response = await fetchWithTimeout('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) }, 60000);
                 setProgress(3, 80, 'Получение ответа...', MODEL_NAMES[modelToUse], { showDetails: true, filesTotal: 0, filesProcessed: 0, stage: 'Формирование ответа' });
                 if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Таймаут сервера. Claude модели требуют больше времени. Попробуйте Gemini или повторите позже.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
