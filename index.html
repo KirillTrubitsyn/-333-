@@ -1315,7 +1315,7 @@
                     const response = await fetch('/api/ocr', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg` })
+                        body: JSON.stringify({ image: imageData, filename: `${filename}_page${i}.jpg`, model: selectedModel })
                     });
                     const result = await response.json();
                     if (response.ok && result.text) {
@@ -1335,7 +1335,7 @@
         async function recognizeImage(file) {
             let imageData = await fileToBase64(file);
             if (file.size > 2 * 1024 * 1024) imageData = await compressImage(imageData);
-            const response = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name }) });
+            const response = await fetch('/api/ocr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: imageData, filename: file.name, model: selectedModel }) });
             const result = await response.json();
             if (!response.ok) throw new Error(result.error || 'Ошибка OCR');
             return result.text;
@@ -1523,7 +1523,7 @@
                     const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ claim_text: finalClaimText, response_text: finalResponseText, other_documents: '', user_comments: userComments, rates_info: ratesInfo, model: modelToUse }) });
 
                     setProgress(3, 85, 'Получение ответа от AI...', 'Обработка', { showDetails: true, filesTotal: totalFiles, filesProcessed: processedFiles, stage: 'Формирование ответа' });
-                    if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Таймаут сервера. Claude модели требуют больше времени. Попробуйте Gemini или повторите позже.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
+                    if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                     const result = await response.json();
 
                     argumentsText = result.arguments_text;
@@ -1553,7 +1553,7 @@
             } catch (error) {
                 hideProgress();
                 let msg = error.message;
-                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил. Claude API перегружен — попробуйте Gemini или повторите через минуту.';
+                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил вовремя. Попробуйте другую модель или повторите через минуту.';
                 errorBox.textContent = '❌ ' + msg;
                 errorBox.classList.add('active');
                 output.style.display = 'block';
@@ -1599,7 +1599,7 @@
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
                 const response = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...lastInputData, other_documents: '', rates_info: ratesInfo, model: modelToUse }) });
                 setProgress(3, 80, 'Получение ответа...', MODEL_NAMES[modelToUse], { showDetails: true, filesTotal: 0, filesProcessed: 0, stage: 'Формирование ответа' });
-                if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Таймаут сервера. Claude модели требуют больше времени. Попробуйте Gemini или повторите позже.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
+                if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил 60 сек. Попробуйте ещё раз или выберите другую модель.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
 
                 setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
@@ -1621,7 +1621,7 @@
             } catch (error) {
                 hideProgress();
                 let msg = error.message;
-                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил. Claude API перегружен — попробуйте Gemini или повторите через минуту.';
+                if (msg === 'Failed to fetch' || msg.includes('NetworkError')) msg = 'Сервер не ответил вовремя. Попробуйте другую модель или повторите через минуту.';
                 errorBox.textContent = '❌ ' + msg;
                 errorBox.classList.add('active');
                 output.style.display = 'block';
