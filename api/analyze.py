@@ -138,7 +138,7 @@ def clean_markdown(text: str) -> str:
 def call_gemini(system_prompt: str, user_prompt: str) -> str:
     """Вызов Gemini API"""
     model = genai.GenerativeModel(
-        model_name="gemini-2.5-pro",
+        model_name="gemini-3-pro-preview",
         system_instruction=system_prompt
     )
 
@@ -198,7 +198,7 @@ class handler(BaseHTTPRequestHandler):
             other_documents = compress_text(data.get('other_documents', ''))
             user_comments = data.get('user_comments', '').strip()
             rates_info = data.get('rates_info', 'Ставки ЦБ недоступны')
-            model = data.get('model', 'gemini-2.5-pro')
+            model = data.get('model', 'gemini-3-pro-preview')
 
             if not claim_text:
                 self.send_response(400)
