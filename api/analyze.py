@@ -179,7 +179,7 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
     try:
         message = client.messages.create(
             model=model_id,
-            max_tokens=4096,
+            max_tokens=2048,  # Уменьшено для ускорения ответа
             system=system_prompt,
             messages=[
                 {"role": "user", "content": user_prompt}
