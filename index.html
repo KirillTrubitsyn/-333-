@@ -933,6 +933,29 @@
         </div>
     </div>
 
+    <!-- Model Selection Modal -->
+    <div id="modelSelectModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header"><h3>Выбор модели для перегенерации</h3><button class="modal-close" onclick="closeModelSelectModal()">×</button></div>
+            <div class="modal-body">
+                <div class="model-options" style="flex-direction: column;">
+                    <div class="model-option" data-model="gemini-3-pro-preview" onclick="selectAndRegenerate('gemini-3-pro-preview')">
+                        <div class="model-name">Gemini 3 Pro</div>
+                        <div class="model-desc">Google, глубокий анализ</div>
+                    </div>
+                    <div class="model-option" data-model="claude-sonnet-4-5-20250929" onclick="selectAndRegenerate('claude-sonnet-4-5-20250929')">
+                        <div class="model-name">Claude Sonnet 4.5</div>
+                        <div class="model-desc">Anthropic, баланс</div>
+                    </div>
+                    <div class="model-option" data-model="claude-opus-4-5-20251101" onclick="selectAndRegenerate('claude-opus-4-5-20251101')">
+                        <div class="model-name">Claude Opus 4.5</div>
+                        <div class="model-desc">Anthropic, мощный</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Image Preview Modal -->
     <div id="imagePreviewModal" class="image-preview-modal" onclick="closeImagePreview()">
         <button class="image-preview-close" onclick="closeImagePreview()">×</button>
@@ -952,26 +975,52 @@
         const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-sonnet-4-5-20250929': 'Claude Sonnet 4.5', 'claude-opus-4-5-20251101': 'Claude Opus 4.5'};
         const MODEL_SHORT = {'gemini-3-pro-preview': 'Gemini3', 'claude-sonnet-4-5-20250929': 'Sonnet45', 'claude-opus-4-5-20251101': 'Opus45'};
 
-        function extractCaseId(text) {
-            if (!text) return '';
-            // Ищем ООО/АО/ЗАО/ПАО/ИП + название
-            const orgMatch = text.match(/(?:ООО|АО|ЗАО|ПАО|ИП)\s*[«"]?([А-Яа-яЁё\w\-]+)[»"]?/);
-            if (orgMatch) return orgMatch[1].substring(0, 15);
-            // Ищем номер договора
-            const contractMatch = text.match(/(?:договор[а-я]*|контракт[а-я]*)\s*(?:№|#|N)?\s*([А-Яа-яA-Za-z0-9\-\/]+)/i);
-            if (contractMatch) return contractMatch[1].substring(0, 12);
-            // Ищем номер дела
-            const caseMatch = text.match(/(?:дело|А)\s*(?:№|#)?\s*([А-Яа-яA-Za-z0-9\-\/]+)/i);
-            if (caseMatch) return caseMatch[1].substring(0, 12);
-            return '';
+        function extractDisputeInfo(text) {
+            if (!text) return { org: '', disputeType: '' };
+
+            // Ищем название организации
+            let org = '';
+            const orgMatch = text.match(/(?:ООО|АО|ЗАО|ПАО|ИП)\s*[«"„]?([А-Яа-яЁёA-Za-z0-9\s\-]+)[»""']?/);
+            if (orgMatch) {
+                org = orgMatch[1].trim().split(/\s+/).slice(0, 2).join('-').substring(0, 15);
+            }
+
+            // Определяем тип спора по ключевым словам
+            const disputeKeywords = [
+                { pattern: /неустойк|пен[ия]|штраф/i, label: 'неустойка' },
+                { pattern: /поставк|товар|продукц/i, label: 'поставка' },
+                { pattern: /подряд|работ[аы]|СМР|строител/i, label: 'подряд' },
+                { pattern: /аренд|найм/i, label: 'аренда' },
+                { pattern: /займ|кредит|процент/i, label: 'займ' },
+                { pattern: /услуг/i, label: 'услуги' },
+                { pattern: /страхов/i, label: 'страхование' },
+                { pattern: /перевоз|транспорт|груз/i, label: 'перевозка' },
+                { pattern: /убытк|ущерб|возмещен/i, label: 'убытки' }
+            ];
+
+            let disputeType = '';
+            for (const kw of disputeKeywords) {
+                if (kw.pattern.test(text)) {
+                    disputeType = kw.label;
+                    break;
+                }
+            }
+
+            return { org, disputeType };
         }
 
         function generateFileName(ext) {
             const modelShort = MODEL_SHORT[lastUsedModel] || 'AI';
             const claimText = document.getElementById('claimText').value;
-            const caseId = extractCaseId(claimText);
-            const safeId = caseId.replace(/[<>:"/\\|?*]/g, '_');
-            return safeId ? `${modelShort}_${safeId}.${ext}` : `${modelShort}_333.${ext}`;
+            const { org, disputeType } = extractDisputeInfo(claimText);
+
+            // Формируем имя: Модель_Организация_ТипСпора.ext
+            let parts = [modelShort];
+            if (org) parts.push(org.replace(/[<>:"/\\|?*]/g, '_'));
+            if (disputeType) parts.push(disputeType);
+            if (parts.length === 1) parts.push('333');
+
+            return parts.join('_') + '.' + ext;
         }
 
         let cachedRates = [], currentRate = null, lastResult = '', selectedModel = 'gemini-3-pro-preview', lastUsedModel = '', lastInputData = null;
@@ -1487,11 +1536,22 @@
 
         function regenerateWithDifferentModel() {
             if (!lastInputData) { alert('Сначала сгенерируйте аргументы'); return; }
-            const models = ['gemini-3-pro-preview', 'claude-sonnet-4-5-20250929', 'claude-opus-4-5-20251101'];
-            const nextModel = models[(models.indexOf(lastUsedModel) + 1) % models.length];
-            document.querySelectorAll('.model-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.model === nextModel));
-            selectedModel = nextModel;
-            generateWithSavedData(nextModel);
+            // Подсветить текущую модель в модальном окне
+            document.querySelectorAll('#modelSelectModal .model-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.model === lastUsedModel);
+            });
+            document.getElementById('modelSelectModal').classList.add('active');
+        }
+
+        function closeModelSelectModal() {
+            document.getElementById('modelSelectModal').classList.remove('active');
+        }
+
+        function selectAndRegenerate(modelId) {
+            closeModelSelectModal();
+            document.querySelectorAll('.model-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.model === modelId));
+            selectedModel = modelId;
+            generateWithSavedData(modelId);
         }
 
         async function generateWithSavedData(modelToUse) {
