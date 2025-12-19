@@ -32,7 +32,7 @@ def get_anthropic_client():
         import anthropic
         anthropic_client = anthropic.Anthropic(
             api_key=ANTHROPIC_API_KEY,
-            timeout=55.0  # 55 сек (в пределах 60 сек Vercel)
+            timeout=170.0  # 170 сек для думающих моделей (в пределах 180 сек Vercel Pro)
         )
     return anthropic_client
 
@@ -46,7 +46,7 @@ def get_openai_client():
         from openai import OpenAI
         openai_client = OpenAI(
             api_key=OPENAI_API_KEY,
-            timeout=55.0
+            timeout=170.0  # 170 сек для думающих моделей (o1, o3)
         )
     return openai_client
 
