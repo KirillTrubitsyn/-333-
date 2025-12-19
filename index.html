@@ -980,7 +980,7 @@
 
             // Ищем название организации
             let org = '';
-            const orgMatch = text.match(/(?:ООО|АО|ЗАО|ПАО|ИП)\s*[«"„]?([А-Яа-яЁёA-Za-z0-9\s\-]+)[»""']?/);
+            const orgMatch = text.match(/(?:ООО|АО|ЗАО|ПАО|ИП|ОАО)\s*[«"„]?([А-Яа-яЁёA-Za-z0-9\s\-]+)[»""']?/);
             if (orgMatch) {
                 org = orgMatch[1].trim().split(/\s+/).slice(0, 2).join('-').substring(0, 15);
             }
@@ -995,7 +995,9 @@
                 { pattern: /услуг/i, label: 'услуги' },
                 { pattern: /страхов/i, label: 'страхование' },
                 { pattern: /перевоз|транспорт|груз/i, label: 'перевозка' },
-                { pattern: /убытк|ущерб|возмещен/i, label: 'убытки' }
+                { pattern: /убытк|ущерб|возмещен/i, label: 'убытки' },
+                { pattern: /долг|задолженност|взыскан/i, label: 'долг' },
+                { pattern: /оплат|платеж/i, label: 'оплата' }
             ];
 
             let disputeType = '';
@@ -1011,8 +1013,17 @@
 
         function generateFileName(ext) {
             const modelShort = MODEL_SHORT[lastUsedModel] || 'AI';
-            const claimText = document.getElementById('claimText').value;
-            const { org, disputeType } = extractDisputeInfo(claimText);
+
+            // Пробуем несколько источников текста
+            let textToAnalyze = document.getElementById('claimText').value;
+            if (!textToAnalyze && lastInputData && lastInputData.claim_text) {
+                textToAnalyze = lastInputData.claim_text;
+            }
+            if (!textToAnalyze && lastResult) {
+                textToAnalyze = lastResult;
+            }
+
+            const { org, disputeType } = extractDisputeInfo(textToAnalyze);
 
             // Формируем имя: Модель_Организация_ТипСпора.ext
             let parts = [modelShort];
