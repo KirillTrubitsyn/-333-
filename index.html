@@ -1638,70 +1638,74 @@
 
         async function downloadPdf() {
             const { jsPDF } = window.jspdf;
-            const outputEl = document.getElementById('output');
-            const text = outputEl.textContent;
+            const text = document.getElementById('output').textContent;
 
-            // Create a temporary container for PDF rendering
+            // Create styled HTML container
             const tempDiv = document.createElement('div');
             tempDiv.style.cssText = `
                 position: absolute;
                 left: -9999px;
                 top: 0;
-                width: 550px;
-                padding: 30px;
+                width: 170mm;
+                padding: 0;
                 background: white;
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                font-size: 11px;
+                font-family: 'Times New Roman', serif;
+                font-size: 12pt;
                 line-height: 1.5;
                 color: #000;
-                white-space: pre-wrap;
-                word-wrap: break-word;
             `;
-            tempDiv.textContent = text;
+
+            // Format text with proper paragraphs (like DOCX)
+            const lines = text.split('\n');
+            for (const line of lines) {
+                const trimmed = line.trim();
+                const p = document.createElement('p');
+                p.style.margin = '0 0 8pt 0';
+                p.style.textAlign = 'justify';
+
+                const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
+                const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
+
+                if (!trimmed) {
+                    p.innerHTML = '&nbsp;';
+                } else if (isMainHeading) {
+                    p.style.fontWeight = 'bold';
+                    p.style.fontSize = '13pt';
+                    p.style.marginTop = '14pt';
+                    p.style.marginBottom = '8pt';
+                    p.style.color = '#1a3a6e';
+                    p.textContent = trimmed;
+                } else if (isSubHeading) {
+                    p.style.fontWeight = 'bold';
+                    p.style.fontSize = '12pt';
+                    p.style.marginTop = '10pt';
+                    p.style.color = '#1a3a6e';
+                    p.textContent = trimmed;
+                } else {
+                    p.textContent = trimmed;
+                }
+                tempDiv.appendChild(p);
+            }
+
             document.body.appendChild(tempDiv);
 
             const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-            const pageWidthMm = pdf.internal.pageSize.getWidth();
-            const pageHeightMm = pdf.internal.pageSize.getHeight();
-            const marginMm = 10;
-            const contentWidthMm = pageWidthMm - marginMm * 2;
-            const contentHeightMm = pageHeightMm - marginMm * 2;
 
             try {
-                const canvas = await html2canvas(tempDiv, {
-                    scale: 2,
-                    useCORS: true,
-                    logging: false,
-                    backgroundColor: '#ffffff'
+                await pdf.html(tempDiv, {
+                    callback: function(doc) {
+                        doc.save('arguments_333.pdf');
+                    },
+                    x: 20,
+                    y: 15,
+                    width: 170,
+                    windowWidth: tempDiv.scrollWidth,
+                    html2canvas: {
+                        scale: 0.265,
+                        useCORS: true,
+                        logging: false
+                    }
                 });
-
-                // Calculate how much canvas height fits on one page
-                const pxPerMm = canvas.width / contentWidthMm;
-                const pageHeightPx = contentHeightMm * pxPerMm;
-                const totalPages = Math.ceil(canvas.height / pageHeightPx);
-
-                for (let page = 0; page < totalPages; page++) {
-                    if (page > 0) pdf.addPage();
-
-                    // Calculate source coordinates for this page slice
-                    const srcY = page * pageHeightPx;
-                    const srcHeight = Math.min(pageHeightPx, canvas.height - srcY);
-
-                    // Create a cropped canvas for this page
-                    const pageCanvas = document.createElement('canvas');
-                    pageCanvas.width = canvas.width;
-                    pageCanvas.height = srcHeight;
-                    const ctx = pageCanvas.getContext('2d');
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
-                    ctx.drawImage(canvas, 0, srcY, canvas.width, srcHeight, 0, 0, canvas.width, srcHeight);
-
-                    const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.92);
-                    const imgHeightMm = srcHeight / pxPerMm;
-                    pdf.addImage(pageImgData, 'JPEG', marginMm, marginMm, contentWidthMm, imgHeightMm);
-                }
-
-                pdf.save('arguments_333.pdf');
             } finally {
                 document.body.removeChild(tempDiv);
             }
