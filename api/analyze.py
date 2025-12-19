@@ -195,7 +195,7 @@ def call_claude(system_prompt: str, user_prompt: str, model_id: str) -> str:
     try:
         message = client.messages.create(
             model=model_id,
-            max_tokens=2048,
+            max_tokens=8192,
             system=system_prompt,
             messages=[
                 {"role": "user", "content": user_prompt}
