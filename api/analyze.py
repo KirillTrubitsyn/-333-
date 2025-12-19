@@ -247,14 +247,22 @@ def call_openai(system_prompt: str, user_prompt: str, model_id: str) -> str:
             messages=messages
         )
 
-        # Получаем текст ответа (может быть None для некоторых моделей)
-        text = response.choices[0].message.content
+        # Получаем текст ответа
+        text = None
+        message = response.choices[0].message
+
+        # Пробуем разные способы получить текст
+        if message.content:
+            text = message.content
+        elif hasattr(message, 'reasoning_content') and message.reasoning_content:
+            text = message.reasoning_content
+        elif hasattr(message, 'refusal') and message.refusal:
+            raise Exception(f"Модель отказалась отвечать: {message.refusal[:100]}")
+
         if not text:
-            # Проверяем reasoning content для думающих моделей
-            if hasattr(response.choices[0].message, 'reasoning_content'):
-                text = response.choices[0].message.reasoning_content
-            if not text:
-                raise Exception("Модель вернула пустой ответ. Попробуйте другую модель.")
+            # Для отладки - показываем структуру ответа
+            msg_dict = message.model_dump() if hasattr(message, 'model_dump') else str(message)
+            raise Exception(f"Пустой ответ. Структура: {str(msg_dict)[:150]}")
 
         return clean_markdown(text)
     except Exception as e:
