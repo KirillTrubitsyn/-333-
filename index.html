@@ -2596,20 +2596,22 @@
                     children.push(new Paragraph({
                         children: [new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━", color: "C9A227", size: 16 })],
                         alignment: AlignmentType.CENTER,
-                        spacing: { after: 150 }
+                        spacing: { after: 200 }
                     }));
                 } else if (isMainHeading) {
                     isFirstHeading = false;
-                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 200, after: 80 } }));
+                    // Пробел перед разделом
+                    children.push(new Paragraph({ text: '', spacing: { after: 120 } }));
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a2744" })], spacing: { before: 100, after: 100 } }));
                 } else if (isSubHeading) {
-                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 22, color: "1a2744" })], spacing: { before: 120, after: 60 } }));
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 160, after: 80 } }));
                 } else {
-                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 22 })], spacing: { after: 40 }, alignment: AlignmentType.JUSTIFIED }));
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
                 }
             }
             const doc = new Document({
                 sections: [{
-                    properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 1134 } } },
+                    properties: { page: { margin: { top: 900, right: 720, bottom: 900, left: 1701 } } },
                     children
                 }]
             });
