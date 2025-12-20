@@ -134,17 +134,26 @@ def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
             key_points = case.get('key_points', [])
 
             # Определяем тип документа для отображения
-            if 'пленум' in category.lower() or 'пленум' in summary.lower():
+            is_court_decision = False
+            has_number = False
+
+            if category == 'plenum_resolution' or 'пленум' in category.lower() or 'пленум' in summary.lower():
                 doc_label = "Постановление Пленума"
-            elif 'обзор' in category.lower() or 'обзор' in summary.lower():
+                has_number = True
+            elif category == 'practice_review' or 'обзор' in category.lower():
                 doc_label = "Обзор практики"
-            elif 'статья' in category.lower() or 'научн' in category.lower():
+                has_number = True
+            elif category == 'scientific_article' or 'статья' in category.lower() or 'научн' in category.lower():
                 doc_label = "Научная статья"
+            elif category == 'ai_review':
+                doc_label = "Аналитический обзор"
             else:
                 doc_label = "Дело"
+                is_court_decision = True
+                has_number = True
 
             court_practice += f"\n{i}. {doc_label}"
-            if case_number:
+            if has_number and case_number:
                 court_practice += f" {case_number}"
             if court_name:
                 court_practice += f" ({court_name})"
@@ -153,8 +162,8 @@ def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
             if key_points:
                 court_practice += f"   Ключевые позиции: {', '.join(key_points[:4])}\n"
 
-            # Для судебных решений показываем исход по неустойке
-            if case.get('penalty_reduced') is not None and doc_label == "Дело":
+            # Только для судебных решений показываем исход по неустойке
+            if is_court_decision and case.get('penalty_reduced') is not None:
                 reduced = "снижена" if case.get('penalty_reduced') else "не снижена"
                 percent = f" на {case.get('reduction_percent')}%" if case.get('reduction_percent') else ""
                 court_practice += f"   Исход: неустойка {reduced}{percent}\n"
