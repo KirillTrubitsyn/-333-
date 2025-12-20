@@ -35,6 +35,90 @@ DOCUMENT_WEIGHTS = {
     "ai_review": 0.6             # AI обзоры - низший приоритет
 }
 
+# Синонимы для расширения запроса (Query Expansion)
+LEGAL_SYNONYMS = {
+    "неустойка": ["пеня", "штраф", "санкция", "штрафная санкция"],
+    "снижение": ["уменьшение", "редукция", "снизить", "уменьшить"],
+    "несоразмерность": ["чрезмерность", "явная несоразмерность", "несоразмерный"],
+    "договор поставки": ["поставка товара", "поставщик", "покупатель"],
+    "договор подряда": ["подрядчик", "заказчик", "подрядные работы"],
+    "договор аренды": ["арендатор", "арендодатель", "арендная плата"],
+    "просрочка": ["нарушение срока", "несвоевременно", "задержка"],
+    "ответчик": ["должник", "нарушитель"],
+    "истец": ["кредитор", "взыскатель"],
+}
+
+
+def expand_query(query: str) -> str:
+    """
+    Расширяет поисковый запрос юридическими синонимами.
+    Улучшает recall при векторном поиске.
+    """
+    query_lower = query.lower()
+    expansions = []
+
+    for term, synonyms in LEGAL_SYNONYMS.items():
+        if term in query_lower:
+            # Добавляем синонимы, которых ещё нет в запросе
+            for syn in synonyms:
+                if syn.lower() not in query_lower:
+                    expansions.append(syn)
+
+    if expansions:
+        # Добавляем уникальные синонимы в конец запроса
+        return query + " " + " ".join(expansions[:5])  # Максимум 5 синонимов
+
+    return query
+
+
+def calculate_temporal_boost(decision_date: str) -> float:
+    """
+    Вычисляет бонус за свежесть документа.
+    Более новые решения получают больший вес.
+    """
+    if not decision_date:
+        return 1.0
+
+    try:
+        from datetime import datetime
+        # Парсим дату (формат YYYY-MM-DD)
+        doc_date = datetime.strptime(decision_date[:10], "%Y-%m-%d")
+        current_year = datetime.now().year
+
+        year_diff = current_year - doc_date.year
+
+        if year_diff <= 1:      # 2024-2025
+            return 1.2
+        elif year_diff <= 3:    # 2022-2023
+            return 1.1
+        elif year_diff <= 5:    # 2020-2021
+            return 1.0
+        else:                   # старше 5 лет
+            return 0.9
+    except (ValueError, TypeError):
+        return 1.0
+
+
+def calculate_outcome_boost(penalty_reduced: bool, category: str) -> float:
+    """
+    Вычисляет бонус на основе исхода дела.
+    Для истца ценнее дела, где неустойка НЕ была снижена.
+    """
+    # Для постановлений и обзоров исход не применим
+    if category in ['plenum_resolution', 'practice_review', 'scientific_article', 'ai_review']:
+        return 1.0
+
+    if penalty_reduced is None:
+        return 1.0
+
+    if penalty_reduced:
+        # Неустойка снижена - менее ценно для истца, но полезно знать аргументы
+        return 0.9
+    else:
+        # Неустойка НЕ снижена - очень ценно для истца
+        return 1.3
+
+
 # Claude setup - lazy import
 anthropic_client = None
 
@@ -155,7 +239,8 @@ def calculate_keyword_score(text: str, query: str) -> float:
 
 def hybrid_rerank(results: list, query: str, vector_weight: float = 0.7, keyword_weight: float = 0.3) -> list:
     """
-    Гибридное переранжирование: комбинация векторного сходства и keyword matching.
+    Гибридное переранжирование: комбинация векторного сходства, keyword matching,
+    временного бонуса и бонуса за исход дела.
 
     Args:
         results: Результаты векторного поиска
@@ -181,11 +266,23 @@ def hybrid_rerank(results: list, query: str, vector_weight: float = 0.7, keyword
         category = item.get('category', 'court_decision')
         type_weight = DOCUMENT_WEIGHTS.get(category, 1.0)
 
-        # 4. Финальный гибридный скор
-        hybrid_score = (vector_weight * vector_score + keyword_weight * keyword_score) * type_weight
+        # 4. Temporal boost (свежие решения важнее)
+        decision_date = item.get('decision_date', '')
+        temporal_boost = calculate_temporal_boost(decision_date)
 
+        # 5. Outcome boost (дела без снижения ценнее для истца)
+        penalty_reduced = item.get('penalty_reduced')
+        outcome_boost = calculate_outcome_boost(penalty_reduced, category)
+
+        # 6. Финальный гибридный скор с учётом всех факторов
+        base_score = vector_weight * vector_score + keyword_weight * keyword_score
+        hybrid_score = base_score * type_weight * temporal_boost * outcome_boost
+
+        # Сохраняем все скоры для отладки
         item['vector_score'] = vector_score
         item['keyword_score'] = keyword_score
+        item['temporal_boost'] = temporal_boost
+        item['outcome_boost'] = outcome_boost
         item['hybrid_score'] = hybrid_score
 
     # Сортируем по гибридному скору
@@ -313,7 +410,24 @@ def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
                 court_practice += f" {case_number}"
             if court_name:
                 court_practice += f" ({court_name})"
+
+            # Добавляем дату решения
+            decision_date = case.get('decision_date', '')
+            if decision_date:
+                court_practice += f" от {decision_date[:10]}"
+
             court_practice += f"\n   {summary}\n"
+
+            # Контекстное обогащение: ставка и сумма неустойки (если есть)
+            penalty_rate = case.get('penalty_rate', '')
+            penalty_amount = case.get('penalty_amount', '')
+            if penalty_rate or penalty_amount:
+                context_parts = []
+                if penalty_rate:
+                    context_parts.append(f"ставка: {penalty_rate}")
+                if penalty_amount:
+                    context_parts.append(f"сумма: {penalty_amount}")
+                court_practice += f"   Параметры неустойки: {', '.join(context_parts)}\n"
 
             if key_points:
                 court_practice += f"   Ключевые позиции: {', '.join(key_points[:4])}\n"
@@ -615,8 +729,10 @@ class handler(BaseHTTPRequestHandler):
             court_cases = []
             try:
                 search_query = claim_text[:5000]  # Используем начало иска для поиска
-                court_cases = search_court_decisions(search_query)
-                # Гибридное переранжирование: векторный скор + keyword matching + вес типа
+                # Query Expansion: расширяем запрос юридическими синонимами
+                expanded_query = expand_query(search_query)
+                court_cases = search_court_decisions(expanded_query)
+                # Гибридное переранжирование: vector + keyword + temporal + outcome
                 court_cases = hybrid_rerank(court_cases, search_query)
             except Exception as e:
                 print(f"RAG search failed: {e}")  # Продолжаем без RAG если поиск не удался
