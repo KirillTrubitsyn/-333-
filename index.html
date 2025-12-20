@@ -3,17 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор аргументов против ст. 333 ГК РФ</title>
+    <title>Anti333.AI - Генератор юридических аргументов</title>
     <link rel="icon" type="image/x-icon" href="/favicon-32.ico">
     <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#1E3A5F">
+    <meta name="theme-color" content="#1a2744">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="333 Генератор">
+    <meta name="apple-mobile-web-app-title" content="Anti333.AI">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -31,9 +31,9 @@
             overflow: hidden;
         }
         .header {
-            background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%);
+            background: linear-gradient(135deg, #1a2744 0%, #243656 100%);
             color: white;
-            padding: 30px;
+            padding: 25px 30px;
             text-align: center;
             position: relative;
         }
@@ -46,8 +46,46 @@
             height: 3px;
             background: linear-gradient(90deg, #C9A227, #E8C547, #C9A227);
         }
-        .header h1 { font-size: 24px; margin-bottom: 8px; font-weight: 600; }
-        .header p { font-size: 14px; opacity: 0.85; }
+        .header-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            flex-shrink: 0;
+        }
+        .logo-text {
+            display: flex;
+            align-items: baseline;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .logo-text .anti { color: white; }
+        .logo-text .three33 {
+            background: linear-gradient(180deg, #E8C547 0%, #C9A227 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .logo-text .ai { color: white; }
+        .header-subtitle {
+            font-size: 13px;
+            opacity: 0.85;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+        .header h1 { font-size: 24px; margin-bottom: 8px; font-weight: 600; display: none; }
+        .header p { font-size: 14px; opacity: 0.85; display: none; }
         .stats-bar {
             background: #F4F7F9;
             padding: 8px 20px;
@@ -136,7 +174,7 @@
             font-size: 12px;
             color: #4A5568;
         }
-        .tab-btn.active { background: #1E3A5F; color: white; border-color: #1E3A5F; }
+        .tab-btn.active { background: #1a2744; color: white; border-color: #1a2744; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .file-upload {
@@ -316,7 +354,7 @@
             text-align: center;
         }
         .model-option:hover { border-color: #C9A227; }
-        .model-option.selected { border-color: #1E3A5F; background: #F0F5FF; }
+        .model-option.selected { border-color: #1a2744; background: #F0F5FF; }
         .model-option .model-name { font-weight: 600; font-size: 13px; color: #1E3A5F; }
         .model-option .model-desc { font-size: 11px; color: #8899A6; margin-top: 4px; }
         .rates-info {
@@ -338,7 +376,7 @@
             flex: 1;
             min-width: 100px;
         }
-        .btn-primary { background: linear-gradient(135deg, #1E3A5F 0%, #2C4A6E 100%); color: white; }
+        .btn-primary { background: linear-gradient(135deg, #1a2744 0%, #243656 100%); color: white; }
         .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30, 58, 95, 0.3); }
         .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
         .btn-secondary { background: #E8EEF2; color: #4A5568; }
@@ -637,6 +675,30 @@
 <body>
     <div class="container">
         <div class="header">
+            <div class="header-content">
+                <div class="logo-container">
+                    <svg class="logo-icon" viewBox="0 0 50 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Three vertical stripes with arrow bottoms -->
+                        <path d="M8 5 H14 V35 L11 42 L8 35 V5 Z" fill="white"/>
+                        <path d="M22 5 H28 V35 L25 42 L22 35 V5 Z" fill="white"/>
+                        <path d="M36 5 H42 V35 L39 42 L36 35 V5 Z" fill="white"/>
+                        <!-- Gold 333 overlay -->
+                        <text x="25" y="28" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="14" font-weight="900" fill="url(#goldGradient)">333</text>
+                        <defs>
+                            <linearGradient id="goldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                <stop offset="0%" style="stop-color:#E8C547"/>
+                                <stop offset="100%" style="stop-color:#C9A227"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="logo-text">
+                        <span class="anti">Anti</span><span class="three33">333</span><span class="ai">.AI</span>
+                    </div>
+                </div>
+            </div>
+            <div class="header-subtitle">
+                Генератор юридических аргументов против снижения неустойки по ст. 333 ГК РФ
+            </div>
             <h1>Генератор аргументов против снижения неустойки</h1>
             <p>Создание аргументов для возражений по ст. 333 ГК РФ</p>
         </div>
