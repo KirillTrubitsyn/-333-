@@ -2433,10 +2433,53 @@
         function copyToClipboard() { navigator.clipboard.writeText(document.getElementById('output').textContent).then(() => alert('Скопировано!')); }
 
         async function downloadDocx() {
-            const { Document, Packer, Paragraph, TextRun, AlignmentType } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, ImageRun, TabStopType, TabStopPosition, WidthType, Table, TableRow, TableCell, BorderStyle } = docx;
             const text = document.getElementById('output').textContent;
             const lines = text.split('\n');
             const children = [];
+
+            // Загружаем лого для хедера
+            let logoData = null;
+            try {
+                const response = await fetch('/icon-192.png');
+                const blob = await response.blob();
+                logoData = await blob.arrayBuffer();
+            } catch (e) {
+                console.warn('Could not load logo for DOCX:', e);
+            }
+
+            // Создаем хедер с лого и названием
+            const headerChildren = [];
+            if (logoData) {
+                headerChildren.push(
+                    new Paragraph({
+                        children: [
+                            new ImageRun({
+                                data: logoData,
+                                transformation: { width: 40, height: 40 },
+                                type: 'png'
+                            }),
+                            new TextRun({ text: "  " }),
+                            new TextRun({ text: "Anti", bold: true, size: 28, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 28, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 28, color: "1a2744" }),
+                        ],
+                        spacing: { after: 200 }
+                    })
+                );
+            } else {
+                headerChildren.push(
+                    new Paragraph({
+                        children: [
+                            new TextRun({ text: "Anti", bold: true, size: 28, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 28, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 28, color: "1a2744" }),
+                        ],
+                        spacing: { after: 200 }
+                    })
+                );
+            }
+
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed) { children.push(new Paragraph({ text: '' })); continue; }
@@ -2446,7 +2489,15 @@
                 else if (isSubHeading) children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a3a6e" })], spacing: { before: 240, after: 120 } }));
                 else children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 120 }, alignment: AlignmentType.JUSTIFIED }));
             }
-            const doc = new Document({ sections: [{ properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } }, children }] });
+            const doc = new Document({
+                sections: [{
+                    properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+                    headers: {
+                        default: new Header({ children: headerChildren })
+                    },
+                    children
+                }]
+            });
             saveAs(await Packer.toBlob(doc), generateFileName('docx'));
         }
 
