@@ -2550,26 +2550,26 @@
                         children: [
                             new ImageRun({
                                 data: logoData,
-                                transformation: { width: 20, height: 20 },
+                                transformation: { width: 18, height: 18 },
                                 type: 'png'
                             }),
-                            new TextRun({ text: "  " }),
-                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
-                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
-                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: " " }),
+                            new TextRun({ text: "Anti", bold: true, size: 20, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 20, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 20, color: "1a2744" }),
                         ],
-                        spacing: { after: 300 }
+                        spacing: { after: 150 }
                     })
                 );
             } else {
                 children.push(
                     new Paragraph({
                         children: [
-                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
-                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
-                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: "Anti", bold: true, size: 20, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 20, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 20, color: "1a2744" }),
                         ],
-                        spacing: { after: 300 }
+                        spacing: { after: 150 }
                     })
                 );
             }
@@ -2577,7 +2577,7 @@
             let isFirstHeading = true;
             for (const line of lines) {
                 const trimmed = line.trim();
-                if (!trimmed) { children.push(new Paragraph({ text: '' })); continue; }
+                if (!trimmed) continue; // Пропускаем пустые строки
 
                 // Главный заголовок документа (первая строка в верхнем регистре)
                 const isDocTitle = isFirstHeading && /^[А-ЯЁA-Z\s]+$/.test(trimmed) && trimmed.length > 5;
@@ -2588,28 +2588,28 @@
                     isFirstHeading = false;
                     // Красивый заголовок документа
                     children.push(new Paragraph({
-                        children: [new TextRun({ text: trimmed, bold: true, size: 36, color: "1a2744" })],
+                        children: [new TextRun({ text: trimmed, bold: true, size: 32, color: "1a2744" })],
                         alignment: AlignmentType.CENTER,
-                        spacing: { before: 200, after: 120 }
+                        spacing: { before: 100, after: 60 }
                     }));
                     // Декоративная линия под заголовком
                     children.push(new Paragraph({
-                        children: [new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━", color: "C9A227", size: 20 })],
+                        children: [new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━", color: "C9A227", size: 16 })],
                         alignment: AlignmentType.CENTER,
-                        spacing: { after: 300 }
+                        spacing: { after: 150 }
                     }));
                 } else if (isMainHeading) {
                     isFirstHeading = false;
-                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a2744" })], spacing: { before: 360, after: 180 } }));
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 200, after: 80 } }));
                 } else if (isSubHeading) {
-                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 240, after: 120 } }));
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 22, color: "1a2744" })], spacing: { before: 120, after: 60 } }));
                 } else {
-                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 120 }, alignment: AlignmentType.JUSTIFIED }));
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 22 })], spacing: { after: 40 }, alignment: AlignmentType.JUSTIFIED }));
                 }
             }
             const doc = new Document({
                 sections: [{
-                    properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+                    properties: { page: { margin: { top: 720, right: 720, bottom: 720, left: 1134 } } },
                     children
                 }]
             });
