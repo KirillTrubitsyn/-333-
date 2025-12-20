@@ -922,12 +922,23 @@
         <div id="knowledge-panel" class="tab-panel">
             <div style="padding: 25px;">
                 <h2 class="section-title">📚 База судебных решений</h2>
-                <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Добавляйте судебные решения для улучшения качества генерации аргументов.</p>
+                <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Добавляйте судебные решения, постановления пленумов, обзоры практики и научные статьи.</p>
 
                 <div class="calculator-layout">
                     <!-- Форма добавления -->
                     <div class="calc-form">
-                        <h4 style="margin-bottom: 15px; color: #1E3A5F;">Добавить решение</h4>
+                        <h4 style="margin-bottom: 15px; color: #1E3A5F;">Добавить документ</h4>
+
+                        <!-- Тип документа -->
+                        <div class="calc-row">
+                            <label>Тип документа</label>
+                            <select id="kbDocType" onchange="updateKbFormLabels()" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 14px;">
+                                <option value="court_decision">📋 Судебное решение</option>
+                                <option value="plenum_resolution">⚖️ Постановление Пленума ВС РФ</option>
+                                <option value="practice_review">📊 Обзор судебной практики</option>
+                                <option value="scientific_article">📚 Научная статья</option>
+                            </select>
+                        </div>
 
                         <!-- Загрузка документа -->
                         <div class="calc-row" style="background: #F8FAFC; border: 2px dashed #CBD5E0; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
@@ -937,34 +948,34 @@
                                 <button class="btn btn-secondary" onclick="parseKbDocument()" id="kbParseBtn">🔍 Распознать и заполнить</button>
                                 <span id="kbParseStatus" style="font-size: 12px; color: #8899A6;"></span>
                             </div>
-                            <p style="font-size: 11px; color: #8899A6; margin-top: 8px; margin-bottom: 0;">AI автоматически извлечёт номер дела, суд, дату и краткое содержание</p>
+                            <p style="font-size: 11px; color: #8899A6; margin-top: 8px; margin-bottom: 0;">AI автоматически извлечёт данные в зависимости от типа документа</p>
                         </div>
 
                         <div class="calc-row">
-                            <label>Номер дела *</label>
-                            <input type="text" id="kbCaseNumber" placeholder="А40-12345/2024">
+                            <label id="kbCaseNumberLabel">Номер дела / документа</label>
+                            <input type="text" id="kbCaseNumber" placeholder="А40-12345/2024 или № 7">
                         </div>
                         <div class="calc-row">
-                            <label>Суд</label>
+                            <label id="kbCourtNameLabel">Суд / Источник</label>
                             <input type="text" id="kbCourtName" placeholder="Арбитражный суд г. Москвы">
                         </div>
                         <div class="calc-row">
-                            <label>Дата решения</label>
+                            <label id="kbDecisionDateLabel">Дата</label>
                             <input type="date" id="kbDecisionDate">
                         </div>
                         <div class="calc-row">
                             <label>Краткое содержание *</label>
-                            <textarea id="kbSummary" rows="3" placeholder="О чём дело, какие обстоятельства..."></textarea>
+                            <textarea id="kbSummary" rows="3" placeholder="О чём документ, ключевые положения..."></textarea>
                         </div>
                         <div class="calc-row">
-                            <label>Полный текст решения</label>
+                            <label id="kbFullTextLabel">Полный текст</label>
                             <textarea id="kbFullText" rows="5" placeholder="Вставьте полный текст или ключевые выдержки..."></textarea>
                         </div>
                         <div class="calc-row">
-                            <label>Ключевые выводы (через запятую)</label>
-                            <input type="text" id="kbKeyPoints" placeholder="суд отказал в снижении, ответчик не доказал несоразмерность">
+                            <label id="kbKeyPointsLabel">Ключевые выводы / позиции (через запятую)</label>
+                            <input type="text" id="kbKeyPoints" placeholder="правовая позиция 1, правовая позиция 2">
                         </div>
-                        <div class="calc-row" style="display: flex; gap: 20px; align-items: center;">
+                        <div class="calc-row" id="kbPenaltyRow" style="display: flex; gap: 20px; align-items: center;">
                             <label style="display: flex; align-items: center; gap: 8px; margin: 0;">
                                 <input type="checkbox" id="kbPenaltyReduced"> Неустойка снижена
                             </label>
@@ -1269,31 +1280,82 @@
             }
         }
 
+        const DOC_TYPE_NAMES = {
+            'court_decision': 'Судебное решение',
+            'plenum_resolution': 'Постановление Пленума',
+            'practice_review': 'Обзор практики',
+            'scientific_article': 'Научная статья'
+        };
+
+        function updateKbFormLabels() {
+            const docType = document.getElementById('kbDocType').value;
+            const penaltyRow = document.getElementById('kbPenaltyRow');
+
+            // Показываем/скрываем поле "Неустойка снижена" только для судебных решений
+            penaltyRow.style.display = docType === 'court_decision' ? 'flex' : 'none';
+
+            // Обновляем лейблы
+            const labels = {
+                'court_decision': {
+                    caseNumber: 'Номер дела *',
+                    courtName: 'Суд',
+                    date: 'Дата решения',
+                    keyPoints: 'Ключевые выводы (через запятую)'
+                },
+                'plenum_resolution': {
+                    caseNumber: 'Номер постановления',
+                    courtName: 'Орган',
+                    date: 'Дата принятия',
+                    keyPoints: 'Ключевые разъяснения (через запятую)'
+                },
+                'practice_review': {
+                    caseNumber: 'Номер документа',
+                    courtName: 'Кто издал обзор',
+                    date: 'Дата утверждения',
+                    keyPoints: 'Правовые позиции (через запятую)'
+                },
+                'scientific_article': {
+                    caseNumber: 'Авторы',
+                    courtName: 'Источник публикации',
+                    date: 'Год публикации',
+                    keyPoints: 'Ключевые тезисы (через запятую)'
+                }
+            };
+
+            const l = labels[docType] || labels['court_decision'];
+            document.getElementById('kbCaseNumberLabel').textContent = l.caseNumber;
+            document.getElementById('kbCourtNameLabel').textContent = l.courtName;
+            document.getElementById('kbDecisionDateLabel').textContent = l.date;
+            document.getElementById('kbKeyPointsLabel').textContent = l.keyPoints;
+        }
+
         async function addCourtDecision() {
             const errorEl = document.getElementById('kbError');
             const successEl = document.getElementById('kbSuccess');
             errorEl.style.display = 'none';
             successEl.style.display = 'none';
 
+            const docType = document.getElementById('kbDocType').value;
             const caseNumber = document.getElementById('kbCaseNumber').value.trim();
             const summary = document.getElementById('kbSummary').value.trim();
 
-            if (!caseNumber || !summary) {
-                errorEl.textContent = 'Заполните номер дела и краткое содержание';
+            if (!summary) {
+                errorEl.textContent = 'Заполните краткое содержание';
                 errorEl.style.display = 'block';
                 return;
             }
 
             const data = {
                 action: 'add',
+                doc_type: docType,
                 case_number: caseNumber,
                 court_name: document.getElementById('kbCourtName').value.trim(),
                 decision_date: document.getElementById('kbDecisionDate').value || null,
                 summary: summary,
                 full_text: document.getElementById('kbFullText').value.trim(),
                 key_points: document.getElementById('kbKeyPoints').value.split(',').map(s => s.trim()).filter(s => s),
-                penalty_reduced: document.getElementById('kbPenaltyReduced').checked,
-                reduction_percent: parseFloat(document.getElementById('kbReductionPercent').value) || null
+                penalty_reduced: docType === 'court_decision' ? document.getElementById('kbPenaltyReduced').checked : false,
+                reduction_percent: docType === 'court_decision' ? (parseFloat(document.getElementById('kbReductionPercent').value) || null) : null
             };
 
             try {
@@ -1307,7 +1369,7 @@
                     errorEl.textContent = result.error;
                     errorEl.style.display = 'block';
                 } else {
-                    successEl.textContent = '✓ Решение добавлено в базу знаний!';
+                    successEl.textContent = '✓ ' + DOC_TYPE_NAMES[docType] + ' добавлено в базу знаний!';
                     successEl.style.display = 'block';
                     clearKbForm();
                     loadKnowledgeBase();
@@ -1333,6 +1395,7 @@
         }
 
         function clearKbForm() {
+            document.getElementById('kbDocType').value = 'court_decision';
             document.getElementById('kbCaseNumber').value = '';
             document.getElementById('kbCourtName').value = '';
             document.getElementById('kbDecisionDate').value = '';
@@ -1345,6 +1408,7 @@
             document.getElementById('kbParseStatus').textContent = '';
             document.getElementById('kbError').style.display = 'none';
             document.getElementById('kbSuccess').style.display = 'none';
+            updateKbFormLabels();
         }
 
         async function parseKbDocument() {
@@ -1352,6 +1416,7 @@
             const statusEl = document.getElementById('kbParseStatus');
             const parseBtn = document.getElementById('kbParseBtn');
             const errorEl = document.getElementById('kbError');
+            const docType = document.getElementById('kbDocType').value;
 
             errorEl.style.display = 'none';
 
@@ -1396,14 +1461,15 @@
                     throw new Error('Не удалось извлечь текст из документа. Попробуйте другой файл.');
                 }
 
-                statusEl.textContent = '🤖 AI анализирует документ...';
+                statusEl.textContent = '🤖 AI анализирует ' + DOC_TYPE_NAMES[docType].toLowerCase() + '...';
 
-                // Отправляем на парсинг AI
+                // Отправляем на парсинг AI с указанием типа документа
                 const response = await fetch('/api/knowledge', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         action: 'parse',
+                        doc_type: docType,
                         text: documentText
                     })
                 });
@@ -1420,15 +1486,35 @@
 
                 // Заполняем форму
                 const data = result.data;
+                // Номер дела/документа или авторы
                 if (data.case_number) document.getElementById('kbCaseNumber').value = data.case_number;
+                else if (data.document_number) document.getElementById('kbCaseNumber').value = data.document_number;
+                else if (data.authors) document.getElementById('kbCaseNumber').value = data.authors;
+                // Суд/источник
                 if (data.court_name) document.getElementById('kbCourtName').value = data.court_name;
+                else if (data.source) document.getElementById('kbCourtName').value = data.source;
+
                 if (data.decision_date) document.getElementById('kbDecisionDate').value = data.decision_date;
-                if (data.summary) document.getElementById('kbSummary').value = data.summary;
-                if (data.key_points && Array.isArray(data.key_points)) {
-                    document.getElementById('kbKeyPoints').value = data.key_points.join(', ');
+
+                // Краткое содержание (с названием если есть)
+                let summaryText = '';
+                if (data.title) summaryText = data.title + '. ';
+                if (data.summary) summaryText += data.summary;
+                if (summaryText) document.getElementById('kbSummary').value = summaryText;
+
+                // Ключевые позиции
+                let keyPoints = [];
+                if (data.key_points && Array.isArray(data.key_points)) keyPoints = keyPoints.concat(data.key_points);
+                if (data.practical_conclusions && Array.isArray(data.practical_conclusions)) keyPoints = keyPoints.concat(data.practical_conclusions);
+                if (keyPoints.length > 0) {
+                    document.getElementById('kbKeyPoints').value = keyPoints.join(', ');
                 }
-                if (data.penalty_reduced) document.getElementById('kbPenaltyReduced').checked = true;
-                if (data.reduction_percent) document.getElementById('kbReductionPercent').value = data.reduction_percent;
+
+                // Только для судебных решений
+                if (docType === 'court_decision') {
+                    if (data.penalty_reduced) document.getElementById('kbPenaltyReduced').checked = true;
+                    if (data.reduction_percent) document.getElementById('kbReductionPercent').value = data.reduction_percent;
+                }
 
                 // Сохраняем полный текст
                 document.getElementById('kbFullText').value = documentText.substring(0, 50000);

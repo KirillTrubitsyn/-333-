@@ -24,35 +24,103 @@ SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
-PARSE_DOCUMENT_PROMPT = """Ты — система извлечения данных из судебных решений.
+# Промпты для разных типов документов
+PARSE_PROMPTS = {
+    "court_decision": """Ты — система извлечения данных из судебных решений.
 
 Проанализируй текст судебного решения и извлеки следующую информацию в формате JSON:
 
 {
+  "title": "краткое название (например: 'Дело о взыскании неустойки по договору поставки')",
   "case_number": "номер дела (например: А40-12345/2024)",
   "court_name": "название суда",
   "decision_date": "дата решения в формате YYYY-MM-DD",
   "summary": "краткое содержание дела (2-4 предложения): о чём спор, какие обстоятельства, какое решение вынес суд",
   "key_points": ["ключевой вывод 1", "ключевой вывод 2", "ключевой вывод 3"],
   "penalty_reduced": true или false (была ли снижена неустойка по ст. 333 ГК РФ),
-  "reduction_percent": число или null (на сколько процентов снижена неустойка, если применима ст. 333)
+  "reduction_percent": число или null (на сколько процентов снижена неустойка)
 }
 
-ПРАВИЛА:
-1. Если какое-то поле невозможно определить — оставь пустую строку или null
-2. Для key_points выдели 2-5 самых важных выводов суда
-3. penalty_reduced = true ТОЛЬКО если суд явно применил ст. 333 ГК РФ и снизил неустойку
-4. reduction_percent — если известно на сколько % снижена неустойка (например, с 1 млн до 500 тыс = 50%)
-5. Верни ТОЛЬКО JSON без дополнительного текста
+Верни ТОЛЬКО JSON без дополнительного текста.
 
 Текст решения:
+""",
+
+    "plenum_resolution": """Ты — система извлечения данных из постановлений Пленума Верховного Суда РФ.
+
+Проанализируй текст постановления и извлеки следующую информацию в формате JSON:
+
+{
+  "title": "название постановления",
+  "document_number": "номер постановления (например: № 7)",
+  "court_name": "Пленум Верховного Суда Российской Федерации",
+  "decision_date": "дата принятия в формате YYYY-MM-DD",
+  "summary": "о чём постановление, какие вопросы разъясняет (2-4 предложения)",
+  "key_points": ["ключевое разъяснение 1", "ключевое разъяснение 2", "ключевое разъяснение 3", "ключевое разъяснение 4", "ключевое разъяснение 5"],
+  "relevant_articles": ["ст. 333 ГК РФ", "ст. 395 ГК РФ"]
+}
+
+Выдели 5-10 самых важных правовых позиций из постановления.
+Верни ТОЛЬКО JSON без дополнительного текста.
+
+Текст постановления:
+""",
+
+    "practice_review": """Ты — система извлечения данных из обзоров судебной практики.
+
+Проанализируй текст обзора и извлеки следующую информацию в формате JSON:
+
+{
+  "title": "название обзора",
+  "document_number": "номер документа (если есть)",
+  "court_name": "кто издал обзор (например: Верховный Суд РФ, Арбитражный суд округа)",
+  "decision_date": "дата утверждения в формате YYYY-MM-DD",
+  "summary": "о чём обзор, какую практику обобщает (2-4 предложения)",
+  "key_points": ["правовая позиция 1", "правовая позиция 2", "правовая позиция 3", "правовая позиция 4", "правовая позиция 5"],
+  "cases_mentioned": ["А40-xxx/2023", "А56-xxx/2022"]
+}
+
+Выдели 5-10 ключевых правовых позиций из обзора.
+Верни ТОЛЬКО JSON без дополнительного текста.
+
+Текст обзора:
+""",
+
+    "scientific_article": """Ты — система извлечения данных из научных юридических статей.
+
+Проанализируй текст статьи и извлеки следующую информацию в формате JSON:
+
+{
+  "title": "название статьи",
+  "authors": "авторы статьи",
+  "source": "где опубликована (журнал, сборник)",
+  "decision_date": "год публикации в формате YYYY-01-01",
+  "summary": "основная идея статьи, какую проблему исследует (2-4 предложения)",
+  "key_points": ["ключевой тезис 1", "ключевой тезис 2", "ключевой тезис 3"],
+  "practical_conclusions": ["практический вывод 1", "практический вывод 2"]
+}
+
+Выдели ключевые тезисы и практические выводы для применения в судебной практике.
+Верни ТОЛЬКО JSON без дополнительного текста.
+
+Текст статьи:
 """
+}
+
+DOCUMENT_TYPE_NAMES = {
+    "court_decision": "Судебное решение",
+    "plenum_resolution": "Постановление Пленума ВС РФ",
+    "practice_review": "Обзор судебной практики",
+    "scientific_article": "Научная статья"
+}
 
 
-def parse_court_document(text: str) -> dict:
-    """Парсинг судебного решения с помощью Gemini"""
+def parse_document(text: str, doc_type: str = "court_decision") -> dict:
+    """Парсинг документа с помощью Gemini"""
     if not GEMINI_API_KEY:
         raise Exception("Gemini API не настроен")
+
+    prompt = PARSE_PROMPTS.get(doc_type, PARSE_PROMPTS["court_decision"])
 
     model = genai.GenerativeModel(model_name="gemini-2.0-flash")
 
@@ -60,7 +128,7 @@ def parse_court_document(text: str) -> dict:
     text = text[:50000]
 
     response = model.generate_content(
-        PARSE_DOCUMENT_PROMPT + text,
+        prompt + text,
         generation_config=genai.GenerationConfig(
             temperature=0.1,
             max_output_tokens=2048,
@@ -92,7 +160,10 @@ def parse_court_document(text: str) -> dict:
     result_text = result_text.strip()
 
     try:
-        return json.loads(result_text)
+        parsed = json.loads(result_text)
+        parsed['doc_type'] = doc_type
+        parsed['doc_type_name'] = DOCUMENT_TYPE_NAMES.get(doc_type, doc_type)
+        return parsed
     except json.JSONDecodeError as e:
         raise Exception(f"Ошибка парсинга JSON: {str(e)[:100]}")
 
@@ -240,14 +311,16 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({"results": results}).encode())
 
             elif action == 'add':
-                # Добавление нового решения
+                # Добавление нового документа
                 if not SUPABASE_URL or not SUPABASE_KEY:
                     raise Exception("Supabase не настроен")
 
-                case_number = data.get('case_number', '')
+                doc_type = data.get('doc_type', 'court_decision')
+                title = data.get('title', '')
+                case_number = data.get('case_number', '') or data.get('document_number', '')
                 court_name = data.get('court_name', '')
                 decision_date = data.get('decision_date')
-                category = data.get('category', 'неустойка')
+                category = data.get('category', doc_type)
                 summary = data.get('summary', '')
                 full_text = data.get('full_text', '')
                 key_points = data.get('key_points', [])
@@ -255,7 +328,7 @@ class handler(BaseHTTPRequestHandler):
                 reduction_percent = data.get('reduction_percent')
 
                 if not full_text and not summary:
-                    raise Exception("Нужен текст решения или краткое содержание")
+                    raise Exception("Нужен текст документа или краткое содержание")
 
                 # Создаём embedding из полного текста или summary
                 text_for_embedding = full_text if full_text else summary
@@ -267,7 +340,7 @@ class handler(BaseHTTPRequestHandler):
                     "court_name": court_name,
                     "decision_date": decision_date,
                     "category": category,
-                    "summary": summary,
+                    "summary": (title + ". " if title else "") + summary,
                     "full_text": full_text,
                     "key_points": key_points,
                     "penalty_reduced": penalty_reduced,
@@ -310,10 +383,11 @@ class handler(BaseHTTPRequestHandler):
             elif action == 'parse':
                 # Парсинг документа с помощью AI
                 document_text = data.get('text', '')
+                doc_type = data.get('doc_type', 'court_decision')
                 if not document_text:
                     raise Exception("Текст документа не предоставлен")
 
-                parsed_data = parse_court_document(document_text)
+                parsed_data = parse_document(document_text, doc_type)
 
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')

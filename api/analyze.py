@@ -122,19 +122,42 @@ def search_court_decisions(query_text: str) -> list:
 
 
 def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
-    # Формируем блок с судебной практикой
+    # Формируем блок с релевантными источниками
     court_practice = ""
     if court_cases:
-        court_practice = "\n\nРЕЛЕВАНТНАЯ СУДЕБНАЯ ПРАКТИКА (используй в аргументации):\n"
+        court_practice = "\n\nРЕЛЕВАНТНЫЕ ИСТОЧНИКИ ИЗ БАЗЫ ЗНАНИЙ (используй в аргументации):\n"
         for i, case in enumerate(court_cases, 1):
-            reduced = "снижена" if case.get('penalty_reduced') else "не снижена"
-            percent = f" на {case.get('reduction_percent')}%" if case.get('reduction_percent') else ""
-            court_practice += f"""
-{i}. Дело {case.get('case_number', 'N/A')} ({case.get('court_name', '')})
-   Суть: {case.get('summary', '')[:300]}
-   Исход: неустойка {reduced}{percent}
-   Ключевые выводы: {', '.join(case.get('key_points', [])[:3]) if case.get('key_points') else 'нет данных'}
-"""
+            category = case.get('category', 'court_decision')
+            case_number = case.get('case_number', '')
+            court_name = case.get('court_name', '')
+            summary = case.get('summary', '')[:400]
+            key_points = case.get('key_points', [])
+
+            # Определяем тип документа для отображения
+            if 'пленум' in category.lower() or 'пленум' in summary.lower():
+                doc_label = "Постановление Пленума"
+            elif 'обзор' in category.lower() or 'обзор' in summary.lower():
+                doc_label = "Обзор практики"
+            elif 'статья' in category.lower() or 'научн' in category.lower():
+                doc_label = "Научная статья"
+            else:
+                doc_label = "Дело"
+
+            court_practice += f"\n{i}. {doc_label}"
+            if case_number:
+                court_practice += f" {case_number}"
+            if court_name:
+                court_practice += f" ({court_name})"
+            court_practice += f"\n   {summary}\n"
+
+            if key_points:
+                court_practice += f"   Ключевые позиции: {', '.join(key_points[:4])}\n"
+
+            # Для судебных решений показываем исход по неустойке
+            if case.get('penalty_reduced') is not None and doc_label == "Дело":
+                reduced = "снижена" if case.get('penalty_reduced') else "не снижена"
+                percent = f" на {case.get('reduction_percent')}%" if case.get('reduction_percent') else ""
+                court_practice += f"   Исход: неустойка {reduced}{percent}\n"
     return f"""Ты — опытный российский юрист. Твоя задача — создать профессиональный аналитический документ в стиле Кузнецова.
 
 СТИЛЬ КУЗНЕЦОВА — принципы:
