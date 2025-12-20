@@ -63,6 +63,63 @@ def get_openai_client():
     return openai_client
 
 
+def extract_relevant_excerpt(full_text: str, query: str, max_length: int = 500) -> str:
+    """
+    Извлекает наиболее релевантный фрагмент из полного текста документа.
+    Ищет фрагменты с ключевыми юридическими терминами.
+    """
+    if not full_text or len(full_text) <= max_length:
+        return full_text or ""
+
+    # Ключевые слова для поиска релевантных фрагментов (в порядке приоритета)
+    priority_keywords = [
+        "333", "несоразмерн", "явн", "чрезмерн",  # ст. 333 ГК
+        "снижен", "уменьшен", "редуц",            # снижение неустойки
+        "неустойк", "пен", "штраф",               # виды санкций
+        "установил", "пришёл к выводу", "указал", # выводы суда
+        "доказательств", "бремя",                 # доказывание
+        "ответчик", "истец"                       # стороны
+    ]
+
+    best_excerpt = ""
+    best_score = 0
+
+    # Разбиваем на абзацы
+    paragraphs = full_text.split('\n\n')
+    if len(paragraphs) == 1:
+        paragraphs = full_text.split('\n')
+
+    for para in paragraphs:
+        para = para.strip()
+        if len(para) < 50:  # Пропускаем короткие абзацы
+            continue
+
+        # Считаем релевантность абзаца
+        score = 0
+        para_lower = para.lower()
+        for i, kw in enumerate(priority_keywords):
+            if kw in para_lower:
+                score += (len(priority_keywords) - i)  # Приоритетные слова дают больше очков
+
+        if score > best_score:
+            best_score = score
+            best_excerpt = para[:max_length]
+            if len(para) > max_length:
+                # Обрезаем по границе предложения
+                last_period = best_excerpt.rfind('.')
+                if last_period > max_length // 2:
+                    best_excerpt = best_excerpt[:last_period + 1]
+
+    # Если не нашли релевантный фрагмент, берём начало
+    if not best_excerpt:
+        best_excerpt = full_text[:max_length]
+        last_period = best_excerpt.rfind('.')
+        if last_period > max_length // 2:
+            best_excerpt = best_excerpt[:last_period + 1]
+
+    return best_excerpt
+
+
 def rerank_by_document_type(results: list) -> list:
     """Переранжирование результатов с учётом веса типа документа"""
     if not results:
@@ -187,6 +244,13 @@ def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
 
             if key_points:
                 court_practice += f"   Ключевые позиции: {', '.join(key_points[:4])}\n"
+
+            # Извлекаем релевантную цитату из full_text (если есть)
+            full_text = case.get('full_text', '')
+            if full_text and len(full_text) > 100:
+                excerpt = extract_relevant_excerpt(full_text, "", max_length=400)
+                if excerpt and excerpt != summary[:400]:
+                    court_practice += f"   Цитата: «{excerpt}»\n"
 
             # Только для судебных решений показываем исход по неустойке
             if is_court_decision and case.get('penalty_reduced') is not None:
