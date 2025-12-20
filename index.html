@@ -2436,12 +2436,12 @@
         function copyToClipboard() { navigator.clipboard.writeText(document.getElementById('output').textContent).then(() => alert('Скопировано!')); }
 
         async function downloadDocx() {
-            const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, ImageRun, TabStopType, TabStopPosition, WidthType, Table, TableRow, TableCell, BorderStyle } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun } = docx;
             const text = document.getElementById('output').textContent;
             const lines = text.split('\n');
             const children = [];
 
-            // Загружаем лого для хедера
+            // Загружаем лого
             let logoData = null;
             try {
                 const response = await fetch('/icon-192.png');
@@ -2451,34 +2451,33 @@
                 console.warn('Could not load logo for DOCX:', e);
             }
 
-            // Создаем хедер с лого и названием
-            const headerChildren = [];
+            // Добавляем лого как картинку на первую страницу
             if (logoData) {
-                headerChildren.push(
+                children.push(
                     new Paragraph({
                         children: [
                             new ImageRun({
                                 data: logoData,
-                                transformation: { width: 40, height: 40 },
+                                transformation: { width: 20, height: 20 },
                                 type: 'png'
                             }),
                             new TextRun({ text: "  " }),
-                            new TextRun({ text: "Anti", bold: true, size: 28, color: "1a2744" }),
-                            new TextRun({ text: "333", bold: true, size: 28, color: "C9A227" }),
-                            new TextRun({ text: ".AI", bold: true, size: 28, color: "1a2744" }),
+                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
                         ],
-                        spacing: { after: 200 }
+                        spacing: { after: 300 }
                     })
                 );
             } else {
-                headerChildren.push(
+                children.push(
                     new Paragraph({
                         children: [
-                            new TextRun({ text: "Anti", bold: true, size: 28, color: "1a2744" }),
-                            new TextRun({ text: "333", bold: true, size: 28, color: "C9A227" }),
-                            new TextRun({ text: ".AI", bold: true, size: 28, color: "1a2744" }),
+                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
                         ],
-                        spacing: { after: 200 }
+                        spacing: { after: 300 }
                     })
                 );
             }
@@ -2495,9 +2494,6 @@
             const doc = new Document({
                 sections: [{
                     properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
-                    headers: {
-                        default: new Header({ children: headerChildren })
-                    },
                     children
                 }]
             });
@@ -2831,7 +2827,7 @@
                 return;
             }
 
-            const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, ImageRun, Table, TableRow, TableCell, WidthType, BorderStyle } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun } = docx;
             const data = lastCalcData;
 
             // Загружаем лого
@@ -2844,24 +2840,23 @@
                 console.warn('Could not load logo:', e);
             }
 
-            // Хедер с лого
-            const headerChildren = [];
+            const children = [];
+
+            // Добавляем лого как картинку на первую страницу
             if (logoData) {
-                headerChildren.push(
+                children.push(
                     new Paragraph({
                         children: [
-                            new ImageRun({ data: logoData, transformation: { width: 40, height: 40 }, type: 'png' }),
+                            new ImageRun({ data: logoData, transformation: { width: 20, height: 20 }, type: 'png' }),
                             new TextRun({ text: "  " }),
-                            new TextRun({ text: "Anti", bold: true, size: 28, color: "1a2744" }),
-                            new TextRun({ text: "333", bold: true, size: 28, color: "C9A227" }),
-                            new TextRun({ text: ".AI", bold: true, size: 28, color: "1a2744" }),
+                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
                         ],
-                        spacing: { after: 200 }
+                        spacing: { after: 300 }
                     })
                 );
             }
-
-            const children = [];
 
             // Заголовок
             children.push(new Paragraph({
@@ -2960,7 +2955,6 @@
             const doc = new Document({
                 sections: [{
                     properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
-                    headers: logoData ? { default: new Header({ children: headerChildren }) } : undefined,
                     children
                 }]
             });
