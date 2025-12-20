@@ -406,6 +406,77 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"success": True, "message": "Удалено"}).encode())
 
+            elif action == 'get':
+                # Получить один документ по ID
+                decision_id = data.get('id')
+                if not decision_id:
+                    raise Exception("Не указан ID документа")
+
+                url = f"{SUPABASE_URL}/rest/v1/court_decisions?id=eq.{decision_id}&select=id,case_number,court_name,decision_date,category,summary,full_text,key_points,penalty_reduced,reduction_percent"
+                headers = {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                }
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    result = json.loads(response.read().decode('utf-8'))
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True,
+                    "document": result[0] if result else None
+                }).encode())
+
+            elif action == 'update':
+                # Обновить документ
+                decision_id = data.get('id')
+                if not decision_id:
+                    raise Exception("Не указан ID документа")
+
+                # Формируем данные для обновления
+                update_data = {}
+                if 'case_number' in data:
+                    update_data['case_number'] = data['case_number']
+                if 'court_name' in data:
+                    update_data['court_name'] = data['court_name']
+                if 'summary' in data:
+                    update_data['summary'] = data['summary']
+                if 'category' in data:
+                    update_data['category'] = data['category']
+                if 'penalty_reduced' in data:
+                    update_data['penalty_reduced'] = data['penalty_reduced']
+                if 'reduction_percent' in data:
+                    update_data['reduction_percent'] = data['reduction_percent']
+                if 'key_points' in data:
+                    update_data['key_points'] = data['key_points']
+
+                if not update_data:
+                    raise Exception("Нет данных для обновления")
+
+                url = f"{SUPABASE_URL}/rest/v1/court_decisions?id=eq.{decision_id}"
+                headers = {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(update_data).encode('utf-8'),
+                    headers=headers,
+                    method="PATCH"
+                )
+                urllib.request.urlopen(req, timeout=10)
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({"success": True, "message": "Обновлено"}).encode())
+
             elif action == 'parse':
                 # Парсинг документа с помощью AI
                 document_text = data.get('text', '')

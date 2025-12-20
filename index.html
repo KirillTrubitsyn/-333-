@@ -1057,6 +1057,74 @@
         <div class="image-preview-filename" id="imagePreviewFilename"></div>
     </div>
 
+    <!-- Document Preview/Edit Modal -->
+    <div id="docPreviewModal" class="modal">
+        <div class="modal-content" style="max-width: 700px; max-height: 90vh; overflow-y: auto;">
+            <div class="modal-header">
+                <h3 id="docPreviewTitle">Просмотр документа</h3>
+                <button class="modal-close" onclick="closeDocPreview()">&times;</button>
+            </div>
+            <div class="modal-body" style="padding: 20px;">
+                <input type="hidden" id="docPreviewId">
+
+                <div class="calc-row">
+                    <label>Тип документа</label>
+                    <select id="docPreviewCategory" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                        <option value="court_decision">📋 Судебное решение</option>
+                        <option value="plenum_resolution">⚖️ Постановление Пленума ВС РФ</option>
+                        <option value="practice_review">📊 Обзор судебной практики</option>
+                        <option value="scientific_article">📚 Научная статья</option>
+                        <option value="ai_review">🤖 Аналитический обзор от ИИ</option>
+                    </select>
+                </div>
+
+                <div class="calc-row">
+                    <label>Номер / Название</label>
+                    <input type="text" id="docPreviewCaseNumber" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                </div>
+
+                <div class="calc-row">
+                    <label>Суд / Источник</label>
+                    <input type="text" id="docPreviewCourtName" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                </div>
+
+                <div class="calc-row">
+                    <label>Краткое содержание</label>
+                    <textarea id="docPreviewSummary" rows="3" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;"></textarea>
+                </div>
+
+                <div class="calc-row" id="docPreviewPenaltyRow">
+                    <label>Маркер неустойки (только для судебных решений)</label>
+                    <select id="docPreviewPenalty" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                        <option value="null">— Нет маркера —</option>
+                        <option value="false">✅ Не снижена</option>
+                        <option value="true">⚠️ Снижена</option>
+                    </select>
+                    <input type="number" id="docPreviewReductionPercent" placeholder="На сколько % снижена" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px; margin-top: 8px;">
+                </div>
+
+                <div class="calc-row">
+                    <label>Ключевые выводы (через запятую)</label>
+                    <input type="text" id="docPreviewKeyPoints" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                </div>
+
+                <div class="calc-row">
+                    <label>Полный текст <button onclick="toggleFullText()" style="background: none; border: none; color: #3182CE; cursor: pointer; font-size: 12px;">[показать/скрыть]</button></label>
+                    <div id="docPreviewFullTextContainer" style="display: none;">
+                        <textarea id="docPreviewFullText" rows="10" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px; font-size: 12px; font-family: monospace;" readonly></textarea>
+                    </div>
+                </div>
+
+                <div id="docPreviewError" style="display: none; background: #FFF5F5; border: 1px solid #FC8181; border-radius: 6px; padding: 10px; margin-top: 15px; color: #C53030; font-size: 13px;"></div>
+                <div id="docPreviewSuccess" style="display: none; background: #F0FFF4; border: 1px solid #68D391; border-radius: 6px; padding: 10px; margin-top: 15px; color: #276749; font-size: 13px;"></div>
+            </div>
+            <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #E2E8F0; display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeDocPreview()">Закрыть</button>
+                <button class="btn btn-primary" onclick="saveDocChanges()">💾 Сохранить изменения</button>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -1273,19 +1341,32 @@
                     else if (category.includes('статья') || category === 'scientific_article') typeIcon = '📚';
                     else if (category === 'ai_review') typeIcon = '🤖';
 
+                    // Маркер неустойки только для судебных решений и только если установлен
+                    let penaltyBadge = '';
+                    if (isCourtDecision && d.penalty_reduced !== null && d.penalty_reduced !== undefined) {
+                        if (d.penalty_reduced) {
+                            penaltyBadge = `<span style="background: #FED7D7; color: #C53030; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Снижена${d.reduction_percent ? ' на ' + d.reduction_percent + '%' : ''}</span>`;
+                        } else {
+                            penaltyBadge = '<span style="background: #C6F6D5; color: #276749; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Не снижена</span>';
+                        }
+                    }
+
                     return `
                     <div style="background: white; border: 1px solid #E1E8ED; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
                         <div style="display: flex; justify-content: space-between; align-items: start;">
-                            <div>
+                            <div style="flex: 1; cursor: pointer;" onclick="openDocPreview(${d.id})">
                                 <span style="margin-right: 5px;">${typeIcon}</span>
                                 <strong style="color: #1E3A5F;">${hasNumber && d.case_number ? d.case_number : (d.summary || '').substring(0, 50)}</strong>
                                 <span style="color: #8899A6; font-size: 12px; margin-left: 10px;">${d.court_name || ''}</span>
                             </div>
-                            <button onclick="deleteCourtDecision(${d.id})" style="background: none; border: none; color: #E53E3E; cursor: pointer; font-size: 16px;" title="Удалить">✕</button>
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="openDocPreview(${d.id})" style="background: none; border: none; color: #3182CE; cursor: pointer; font-size: 14px;" title="Просмотр и редактирование">✏️</button>
+                                <button onclick="deleteCourtDecision(${d.id})" style="background: none; border: none; color: #E53E3E; cursor: pointer; font-size: 14px;" title="Удалить">✕</button>
+                            </div>
                         </div>
-                        <div style="color: #4A5568; font-size: 13px; margin-top: 8px;">${(d.summary || '').substring(0, 150)}${d.summary && d.summary.length > 150 ? '...' : ''}</div>
-                        <div style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
-                            ${isCourtDecision ? (d.penalty_reduced ? `<span style="background: #FED7D7; color: #C53030; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Снижена${d.reduction_percent ? ' на ' + d.reduction_percent + '%' : ''}</span>` : '<span style="background: #C6F6D5; color: #276749; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Не снижена</span>') : ''}
+                        <div style="color: #4A5568; font-size: 13px; margin-top: 8px; cursor: pointer;" onclick="openDocPreview(${d.id})">${(d.summary || '').substring(0, 150)}${d.summary && d.summary.length > 150 ? '...' : ''}</div>
+                        <div style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                            ${penaltyBadge}
                             ${d.decision_date ? `<span style="color: #8899A6; font-size: 11px;">📅 ${d.decision_date}</span>` : ''}
                         </div>
                     </div>
@@ -1417,6 +1498,111 @@
                 loadKnowledgeBase();
             } catch (e) {
                 alert('Ошибка удаления: ' + e.message);
+            }
+        }
+
+        // === Document Preview/Edit Modal ===
+        async function openDocPreview(id) {
+            const modal = document.getElementById('docPreviewModal');
+            const errorEl = document.getElementById('docPreviewError');
+            const successEl = document.getElementById('docPreviewSuccess');
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'get', id: id })
+                });
+                const result = await response.json();
+
+                if (result.error || !result.document) {
+                    alert('Ошибка загрузки документа: ' + (result.error || 'Не найден'));
+                    return;
+                }
+
+                const doc = result.document;
+                document.getElementById('docPreviewId').value = doc.id;
+                document.getElementById('docPreviewCategory').value = doc.category || 'court_decision';
+                document.getElementById('docPreviewCaseNumber').value = doc.case_number || '';
+                document.getElementById('docPreviewCourtName').value = doc.court_name || '';
+                document.getElementById('docPreviewSummary').value = doc.summary || '';
+                document.getElementById('docPreviewFullText').value = doc.full_text || '';
+                document.getElementById('docPreviewKeyPoints').value = (doc.key_points || []).join(', ');
+
+                // Маркер неустойки
+                if (doc.penalty_reduced === true) {
+                    document.getElementById('docPreviewPenalty').value = 'true';
+                } else if (doc.penalty_reduced === false) {
+                    document.getElementById('docPreviewPenalty').value = 'false';
+                } else {
+                    document.getElementById('docPreviewPenalty').value = 'null';
+                }
+                document.getElementById('docPreviewReductionPercent').value = doc.reduction_percent || '';
+
+                // Скрыть полный текст по умолчанию
+                document.getElementById('docPreviewFullTextContainer').style.display = 'none';
+
+                modal.style.display = 'flex';
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        function closeDocPreview() {
+            document.getElementById('docPreviewModal').style.display = 'none';
+        }
+
+        function toggleFullText() {
+            const container = document.getElementById('docPreviewFullTextContainer');
+            container.style.display = container.style.display === 'none' ? 'block' : 'none';
+        }
+
+        async function saveDocChanges() {
+            const id = document.getElementById('docPreviewId').value;
+            const errorEl = document.getElementById('docPreviewError');
+            const successEl = document.getElementById('docPreviewSuccess');
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            const penaltyValue = document.getElementById('docPreviewPenalty').value;
+            let penaltyReduced = null;
+            if (penaltyValue === 'true') penaltyReduced = true;
+            else if (penaltyValue === 'false') penaltyReduced = false;
+
+            const data = {
+                action: 'update',
+                id: parseInt(id),
+                category: document.getElementById('docPreviewCategory').value,
+                case_number: document.getElementById('docPreviewCaseNumber').value.trim(),
+                court_name: document.getElementById('docPreviewCourtName').value.trim(),
+                summary: document.getElementById('docPreviewSummary').value.trim(),
+                key_points: document.getElementById('docPreviewKeyPoints').value.split(',').map(s => s.trim()).filter(s => s),
+                penalty_reduced: penaltyReduced,
+                reduction_percent: parseFloat(document.getElementById('docPreviewReductionPercent').value) || null
+            };
+
+            try {
+                const response = await fetch('/api/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.error) {
+                    errorEl.textContent = result.error;
+                    errorEl.style.display = 'block';
+                } else {
+                    successEl.textContent = '✓ Изменения сохранены!';
+                    successEl.style.display = 'block';
+                    loadKnowledgeBase();
+                    setTimeout(() => closeDocPreview(), 1000);
+                }
+            } catch (e) {
+                errorEl.textContent = 'Ошибка: ' + e.message;
+                errorEl.style.display = 'block';
             }
         }
 
