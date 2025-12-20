@@ -2482,14 +2482,38 @@
                 );
             }
 
+            let isFirstHeading = true;
             for (const line of lines) {
                 const trimmed = line.trim();
                 if (!trimmed) { children.push(new Paragraph({ text: '' })); continue; }
+
+                // Главный заголовок документа (первая строка в верхнем регистре)
+                const isDocTitle = isFirstHeading && /^[А-ЯЁA-Z\s]+$/.test(trimmed) && trimmed.length > 5;
                 const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
                 const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
-                if (isMainHeading) children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a3a6e" })], spacing: { before: 360, after: 180 } }));
-                else if (isSubHeading) children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a3a6e" })], spacing: { before: 240, after: 120 } }));
-                else children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 120 }, alignment: AlignmentType.JUSTIFIED }));
+
+                if (isDocTitle) {
+                    isFirstHeading = false;
+                    // Красивый заголовок документа
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: trimmed, bold: true, size: 36, color: "1a2744" })],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { before: 200, after: 120 }
+                    }));
+                    // Декоративная линия под заголовком
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━", color: "C9A227", size: 20 })],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 300 }
+                    }));
+                } else if (isMainHeading) {
+                    isFirstHeading = false;
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a2744" })], spacing: { before: 360, after: 180 } }));
+                } else if (isSubHeading) {
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 240, after: 120 } }));
+                } else {
+                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 120 }, alignment: AlignmentType.JUSTIFIED }));
+                }
             }
             const doc = new Document({
                 sections: [{
