@@ -26,6 +26,15 @@ SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
 }
 
+# Веса документов по типу (для приоритезации источников)
+DOCUMENT_WEIGHTS = {
+    "plenum_resolution": 1.5,    # Постановления Пленума ВС РФ - высший приоритет
+    "practice_review": 1.3,      # Обзоры судебной практики
+    "court_decision": 1.0,       # Судебные решения - базовый вес
+    "scientific_article": 0.8,   # Научные статьи - справочно
+    "ai_review": 0.6             # AI обзоры - низший приоритет
+}
+
 # Claude setup - lazy import
 anthropic_client = None
 
@@ -52,6 +61,80 @@ def get_openai_client():
             timeout=290.0  # 290 сек для думающих моделей (o1, o3)
         )
     return openai_client
+
+
+def extract_relevant_excerpt(full_text: str, query: str, max_length: int = 500) -> str:
+    """
+    Извлекает наиболее релевантный фрагмент из полного текста документа.
+    Ищет фрагменты с ключевыми юридическими терминами.
+    """
+    if not full_text or len(full_text) <= max_length:
+        return full_text or ""
+
+    # Ключевые слова для поиска релевантных фрагментов (в порядке приоритета)
+    priority_keywords = [
+        "333", "несоразмерн", "явн", "чрезмерн",  # ст. 333 ГК
+        "снижен", "уменьшен", "редуц",            # снижение неустойки
+        "неустойк", "пен", "штраф",               # виды санкций
+        "установил", "пришёл к выводу", "указал", # выводы суда
+        "доказательств", "бремя",                 # доказывание
+        "ответчик", "истец"                       # стороны
+    ]
+
+    best_excerpt = ""
+    best_score = 0
+
+    # Разбиваем на абзацы
+    paragraphs = full_text.split('\n\n')
+    if len(paragraphs) == 1:
+        paragraphs = full_text.split('\n')
+
+    for para in paragraphs:
+        para = para.strip()
+        if len(para) < 50:  # Пропускаем короткие абзацы
+            continue
+
+        # Считаем релевантность абзаца
+        score = 0
+        para_lower = para.lower()
+        for i, kw in enumerate(priority_keywords):
+            if kw in para_lower:
+                score += (len(priority_keywords) - i)  # Приоритетные слова дают больше очков
+
+        if score > best_score:
+            best_score = score
+            best_excerpt = para[:max_length]
+            if len(para) > max_length:
+                # Обрезаем по границе предложения
+                last_period = best_excerpt.rfind('.')
+                if last_period > max_length // 2:
+                    best_excerpt = best_excerpt[:last_period + 1]
+
+    # Если не нашли релевантный фрагмент, берём начало
+    if not best_excerpt:
+        best_excerpt = full_text[:max_length]
+        last_period = best_excerpt.rfind('.')
+        if last_period > max_length // 2:
+            best_excerpt = best_excerpt[:last_period + 1]
+
+    return best_excerpt
+
+
+def rerank_by_document_type(results: list) -> list:
+    """Переранжирование результатов с учётом веса типа документа"""
+    if not results:
+        return results
+
+    for item in results:
+        category = item.get('category', 'court_decision')
+        weight = DOCUMENT_WEIGHTS.get(category, 1.0)
+        similarity = item.get('similarity', 0.5)
+        # Взвешенный скор = similarity * weight
+        item['weighted_score'] = similarity * weight
+
+    # Сортируем по взвешенному скору (убывание)
+    results.sort(key=lambda x: x.get('weighted_score', 0), reverse=True)
+    return results
 
 
 def compress_text(text: str) -> str:
@@ -96,11 +179,11 @@ def search_court_decisions(query_text: str) -> list:
             embed_result = json.loads(response.read().decode('utf-8'))
             query_embedding = embed_result['data'][0]['embedding']
 
-        # Поиск в Supabase
+        # Поиск в Supabase (увеличены параметры для лучшего качества)
         search_data = json.dumps({
             "query_embedding": query_embedding,
-            "match_count": 3,
-            "match_threshold": 0.5
+            "match_count": 5,
+            "match_threshold": 0.6
         }).encode('utf-8')
 
         search_req = urllib.request.Request(
@@ -161,6 +244,13 @@ def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
 
             if key_points:
                 court_practice += f"   Ключевые позиции: {', '.join(key_points[:4])}\n"
+
+            # Извлекаем релевантную цитату из full_text (если есть)
+            full_text = case.get('full_text', '')
+            if full_text and len(full_text) > 100:
+                excerpt = extract_relevant_excerpt(full_text, "", max_length=400)
+                if excerpt and excerpt != summary[:400]:
+                    court_practice += f"   Цитата: «{excerpt}»\n"
 
             # Только для судебных решений показываем исход по неустойке
             if is_court_decision and case.get('penalty_reduced') is not None:
@@ -453,6 +543,8 @@ class handler(BaseHTTPRequestHandler):
             try:
                 search_query = claim_text[:5000]  # Используем начало иска для поиска
                 court_cases = search_court_decisions(search_query)
+                # Переранжирование с учётом веса типа документа
+                court_cases = rerank_by_document_type(court_cases)
             except Exception as e:
                 print(f"RAG search failed: {e}")  # Продолжаем без RAG если поиск не удался
 

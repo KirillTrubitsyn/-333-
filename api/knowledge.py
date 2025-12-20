@@ -137,6 +137,93 @@ DOCUMENT_TYPE_NAMES = {
 }
 
 
+def split_into_chunks(text: str, chunk_size: int = 2000, overlap: int = 200) -> list:
+    """
+    Разбивает текст на перекрывающиеся chunks для лучшего качества эмбеддингов.
+
+    Args:
+        text: Исходный текст документа
+        chunk_size: Размер одного chunk в символах (~500 токенов для русского)
+        overlap: Перекрытие между chunks для сохранения контекста
+
+    Returns:
+        Список chunks с метаданными
+    """
+    if not text or len(text) <= chunk_size:
+        return [{"text": text, "start": 0, "end": len(text) if text else 0}]
+
+    chunks = []
+    start = 0
+
+    while start < len(text):
+        end = start + chunk_size
+
+        # Если это не последний chunk, ищем границу предложения
+        if end < len(text):
+            # Ищем конец предложения (. ! ?) в пределах последних 200 символов chunk
+            search_start = max(end - 200, start)
+            last_period = -1
+
+            for i in range(end, search_start, -1):
+                if text[i-1] in '.!?\n' and (i >= len(text) or text[i] in ' \n\t'):
+                    last_period = i
+                    break
+
+            if last_period > start:
+                end = last_period
+        else:
+            end = len(text)
+
+        chunk_text = text[start:end].strip()
+        if chunk_text:
+            chunks.append({
+                "text": chunk_text,
+                "start": start,
+                "end": end
+            })
+
+        # Следующий chunk начинается с перекрытием
+        start = end - overlap if end < len(text) else len(text)
+
+    return chunks
+
+
+def get_best_chunk_for_embedding(chunks: list, full_text: str) -> str:
+    """
+    Выбирает лучший chunk для создания эмбеддинга документа.
+    Приоритет: начало документа (факты дела) + правовые выводы.
+    """
+    if not chunks:
+        return full_text[:15000] if full_text else ""
+
+    if len(chunks) == 1:
+        return chunks[0]["text"]
+
+    # Берём первый chunk (обычно содержит суть дела)
+    # и последний (обычно содержит выводы)
+    first_chunk = chunks[0]["text"]
+    last_chunk = chunks[-1]["text"] if len(chunks) > 1 else ""
+
+    # Если есть средний chunk с ключевыми словами, добавляем его
+    middle_chunk = ""
+    keywords = ["вывод", "установил", "решил", "постановил", "признать", "взыскать", "333"]
+
+    for chunk in chunks[1:-1] if len(chunks) > 2 else []:
+        chunk_lower = chunk["text"].lower()
+        if any(kw in chunk_lower for kw in keywords):
+            middle_chunk = chunk["text"][:500]  # Только ключевая часть
+            break
+
+    # Комбинируем, ограничивая общую длину
+    combined = first_chunk
+    if middle_chunk:
+        combined += "\n...\n" + middle_chunk
+    if last_chunk and last_chunk != first_chunk:
+        combined += "\n...\n" + last_chunk
+
+    return combined[:15000]
+
+
 def parse_document(text: str, doc_type: str = "court_decision") -> dict:
     """Парсинг документа с помощью Gemini"""
     if not GEMINI_API_KEY:
@@ -356,8 +443,12 @@ class handler(BaseHTTPRequestHandler):
                 if not full_text and not summary:
                     raise Exception("Нужен текст документа или краткое содержание")
 
-                # Создаём embedding из полного текста или summary
+                # Chunking: разбиваем текст и выбираем лучшие части для эмбеддинга
                 text_for_embedding = full_text if full_text else summary
+                if len(text_for_embedding) > 2000:
+                    chunks = split_into_chunks(text_for_embedding, chunk_size=2000, overlap=200)
+                    text_for_embedding = get_best_chunk_for_embedding(chunks, text_for_embedding)
+
                 embedding = get_embedding(text_for_embedding)
 
                 # Сохраняем в базу
