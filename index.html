@@ -909,6 +909,9 @@
                             <span class="label">Снижение по ст. 333 (до 2x ключ.)</span>
                             <span class="value" id="result333">-</span>
                         </div>
+                        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #E1E8ED;">
+                            <button class="btn btn-success btn-sm" onclick="downloadCalcDocx()">📥 Скачать DOCX</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1020,7 +1023,7 @@
                         </div>
                         <div class="calc-row">
                             <label id="kbKeyPointsLabel">Ключевые выводы / позиции (через запятую)</label>
-                            <input type="text" id="kbKeyPoints" placeholder="правовая позиция 1, правовая позиция 2">
+                            <textarea id="kbKeyPoints" rows="3" placeholder="правовая позиция 1, правовая позиция 2..."></textarea>
                         </div>
                         <div class="calc-row" id="kbPenaltyRow" style="display: flex; gap: 20px; align-items: center;">
                             <label style="display: flex; align-items: center; gap: 8px; margin: 0;">
@@ -1151,7 +1154,7 @@
 
                 <div class="calc-row">
                     <label>Ключевые выводы (через запятую)</label>
-                    <input type="text" id="docPreviewKeyPoints" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                    <textarea id="docPreviewKeyPoints" rows="3" style="width: 100%; padding: 8px; border: 1px solid #E2E8F0; border-radius: 6px;"></textarea>
                 </div>
 
                 <div class="calc-row">
@@ -2433,12 +2436,12 @@
         function copyToClipboard() { navigator.clipboard.writeText(document.getElementById('output').textContent).then(() => alert('Скопировано!')); }
 
         async function downloadDocx() {
-            const { Document, Packer, Paragraph, TextRun, AlignmentType, Header, ImageRun, TabStopType, TabStopPosition, WidthType, Table, TableRow, TableCell, BorderStyle } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun } = docx;
             const text = document.getElementById('output').textContent;
             const lines = text.split('\n');
             const children = [];
 
-            // Загружаем лого для хедера
+            // Загружаем лого
             let logoData = null;
             try {
                 const response = await fetch('/icon-192.png');
@@ -2448,34 +2451,33 @@
                 console.warn('Could not load logo for DOCX:', e);
             }
 
-            // Создаем хедер с лого и названием
-            const headerChildren = [];
+            // Добавляем лого как картинку на первую страницу
             if (logoData) {
-                headerChildren.push(
+                children.push(
                     new Paragraph({
                         children: [
                             new ImageRun({
                                 data: logoData,
-                                transformation: { width: 40, height: 40 },
+                                transformation: { width: 20, height: 20 },
                                 type: 'png'
                             }),
                             new TextRun({ text: "  " }),
-                            new TextRun({ text: "Anti", bold: true, size: 32, color: "0D1B2A" }),
-                            new TextRun({ text: "333", bold: true, size: 32, color: "B8860B" }),
-                            new TextRun({ text: ".AI", bold: true, size: 32, color: "0D1B2A" }),
+                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
                         ],
-                        spacing: { after: 200 }
+                        spacing: { after: 300 }
                     })
                 );
             } else {
-                headerChildren.push(
+                children.push(
                     new Paragraph({
                         children: [
-                            new TextRun({ text: "Anti", bold: true, size: 32, color: "0D1B2A" }),
-                            new TextRun({ text: "333", bold: true, size: 32, color: "B8860B" }),
-                            new TextRun({ text: ".AI", bold: true, size: 32, color: "0D1B2A" }),
+                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
                         ],
-                        spacing: { after: 200 }
+                        spacing: { after: 300 }
                     })
                 );
             }
@@ -2492,9 +2494,6 @@
             const doc = new Document({
                 sections: [{
                     properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
-                    headers: {
-                        default: new Header({ children: headerChildren })
-                    },
                     children
                 }]
             });
@@ -2609,6 +2608,7 @@
         }
 
         let calcPayments = [];
+        let lastCalcData = null; // Хранит последний расчёт для экспорта
 
         function addPayment() {
             const id = Date.now();
@@ -2787,6 +2787,19 @@
             document.getElementById('resultPenalty').textContent = totalPenalty.toLocaleString('ru-RU', {maximumFractionDigits: 2}) + ' ₽';
             document.getElementById('result333').textContent = totalPenalty333.toLocaleString('ru-RU', {maximumFractionDigits: 2}) + ' ₽';
             document.getElementById('calcResult').style.display = 'block';
+
+            // Сохраняем данные для экспорта
+            lastCalcData = {
+                totalDebt,
+                startDate,
+                endDate,
+                rateLabel,
+                results,
+                totalPenalty,
+                totalPenalty333,
+                totalPaid: payments.reduce((sum, p) => sum + p.amount, 0),
+                remainingDebt: totalDebt - payments.reduce((sum, p) => sum + p.amount, 0)
+            };
         }
 
         function toggleCustomRate() {
@@ -2804,7 +2817,150 @@
             document.getElementById('calcResult').style.display = 'none';
             document.getElementById('paymentsList').innerHTML = '';
             calcPayments = [];
+            lastCalcData = null;
             hideCalcError();
+        }
+
+        async function downloadCalcDocx() {
+            if (!lastCalcData) {
+                alert('Сначала выполните расчёт');
+                return;
+            }
+
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun } = docx;
+            const data = lastCalcData;
+
+            // Загружаем лого
+            let logoData = null;
+            try {
+                const response = await fetch('/icon-192.png');
+                const blob = await response.blob();
+                logoData = await blob.arrayBuffer();
+            } catch (e) {
+                console.warn('Could not load logo:', e);
+            }
+
+            const children = [];
+
+            // Добавляем лого как картинку на первую страницу
+            if (logoData) {
+                children.push(
+                    new Paragraph({
+                        children: [
+                            new ImageRun({ data: logoData, transformation: { width: 20, height: 20 }, type: 'png' }),
+                            new TextRun({ text: "  " }),
+                            new TextRun({ text: "Anti", bold: true, size: 24, color: "1a2744" }),
+                            new TextRun({ text: "333", bold: true, size: 24, color: "C9A227" }),
+                            new TextRun({ text: ".AI", bold: true, size: 24, color: "1a2744" }),
+                        ],
+                        spacing: { after: 300 }
+                    })
+                );
+            }
+
+            // Заголовок
+            children.push(new Paragraph({
+                children: [new TextRun({ text: "РАСЧЁТ НЕУСТОЙКИ", bold: true, size: 32, color: "1a2744" })],
+                alignment: AlignmentType.CENTER,
+                spacing: { after: 400 }
+            }));
+
+            // Основные данные
+            children.push(new Paragraph({
+                children: [
+                    new TextRun({ text: "Сумма долга: ", size: 24 }),
+                    new TextRun({ text: data.totalDebt.toLocaleString('ru-RU') + " ₽", bold: true, size: 24 })
+                ],
+                spacing: { after: 120 }
+            }));
+
+            children.push(new Paragraph({
+                children: [
+                    new TextRun({ text: "Период просрочки: ", size: 24 }),
+                    new TextRun({ text: `${formatDate(data.startDate)} — ${formatDate(data.endDate)}`, bold: true, size: 24 })
+                ],
+                spacing: { after: 120 }
+            }));
+
+            children.push(new Paragraph({
+                children: [
+                    new TextRun({ text: "Ставка: ", size: 24 }),
+                    new TextRun({ text: data.rateLabel, bold: true, size: 24 })
+                ],
+                spacing: { after: 200 }
+            }));
+
+            if (data.totalPaid > 0) {
+                children.push(new Paragraph({
+                    children: [
+                        new TextRun({ text: "Оплачено частично: ", size: 24 }),
+                        new TextRun({ text: data.totalPaid.toLocaleString('ru-RU') + " ₽", bold: true, size: 24 })
+                    ],
+                    spacing: { after: 120 }
+                }));
+                children.push(new Paragraph({
+                    children: [
+                        new TextRun({ text: "Остаток долга: ", size: 24 }),
+                        new TextRun({ text: data.remainingDebt.toLocaleString('ru-RU') + " ₽", bold: true, size: 24 })
+                    ],
+                    spacing: { after: 200 }
+                }));
+            }
+
+            // Расчёт по периодам
+            children.push(new Paragraph({
+                children: [new TextRun({ text: "Расчёт по периодам:", bold: true, size: 26, color: "1a2744" })],
+                spacing: { before: 300, after: 200 }
+            }));
+
+            for (const r of data.results) {
+                children.push(new Paragraph({
+                    children: [
+                        new TextRun({ text: `${formatDate(r.startDate)} — ${formatDate(r.endDate)} (${r.days} дн.)`, size: 22 }),
+                    ],
+                    spacing: { after: 60 }
+                }));
+                children.push(new Paragraph({
+                    children: [
+                        new TextRun({ text: `Долг: ${r.debt.toLocaleString('ru-RU')} ₽ → Неустойка: `, size: 22 }),
+                        new TextRun({ text: r.penalty.toLocaleString('ru-RU', {maximumFractionDigits: 2}) + " ₽", bold: true, size: 22 })
+                    ],
+                    spacing: { after: r.paymentAmount ? 60 : 200 }
+                }));
+                if (r.paymentAmount) {
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: `↓ Платёж: ${r.paymentAmount.toLocaleString('ru-RU')} ₽`, size: 22, color: "48BB78" })],
+                        spacing: { after: 200 }
+                    }));
+                }
+            }
+
+            // Итого
+            children.push(new Paragraph({
+                children: [
+                    new TextRun({ text: "ИТОГО НЕУСТОЙКА: ", bold: true, size: 28, color: "1a2744" }),
+                    new TextRun({ text: data.totalPenalty.toLocaleString('ru-RU', {maximumFractionDigits: 2}) + " ₽", bold: true, size: 28, color: "C9A227" })
+                ],
+                spacing: { before: 300, after: 120 }
+            }));
+
+            children.push(new Paragraph({
+                children: [
+                    new TextRun({ text: "Снижение по ст. 333 ГК РФ (до 2x ключ.): ", size: 24 }),
+                    new TextRun({ text: data.totalPenalty333.toLocaleString('ru-RU', {maximumFractionDigits: 2}) + " ₽", bold: true, size: 24 })
+                ],
+                spacing: { after: 200 }
+            }));
+
+            const doc = new Document({
+                sections: [{
+                    properties: { page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } } },
+                    children
+                }]
+            });
+
+            const fileName = `Расчёт_неустойки_${new Date().toISOString().split('T')[0]}.docx`;
+            saveAs(await Packer.toBlob(doc), fileName);
         }
 
         function updateStatsAfterGeneration(model, time) {
