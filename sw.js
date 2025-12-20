@@ -1,4 +1,4 @@
-const CACHE_NAME = 'anti333-cache-v2';
+const CACHE_NAME = 'anti333-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -7,7 +7,8 @@ const STATIC_ASSETS = [
   '/favicon-96.png',
   '/apple-touch-icon.png',
   '/icon-192.png',
-  '/icon-512.png'
+  '/icon-512.png',
+  '/toplist333.png'
 ];
 
 const EXTERNAL_ASSETS = [
