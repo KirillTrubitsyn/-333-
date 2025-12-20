@@ -33,8 +33,7 @@
         .header {
             background: #1a2744;
             color: white;
-            padding: 0;
-            text-align: center;
+            padding: 20px 30px;
             position: relative;
         }
         .header::after {
@@ -46,16 +45,45 @@
             height: 3px;
             background: linear-gradient(90deg, #C9A227, #E8C547, #C9A227);
         }
-        .header-banner {
-            width: 100%;
-            max-width: 600px;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            padding: 15px 20px;
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
         }
-        .header h1 { display: none; }
-        .header p { display: none; }
+        .header-logo {
+            width: 60px;
+            height: 60px;
+            flex-shrink: 0;
+        }
+        .header-text {
+            flex: 1;
+        }
+        .header-title {
+            font-size: 26px;
+            font-weight: 700;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0;
+        }
+        .header-title .anti { color: white; }
+        .header-title .num {
+            background: linear-gradient(180deg, #E8C547 0%, #C9A227 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .header-title .ai { color: white; }
+        .header-subtitle {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.4;
+        }
+        .header-subtitle-gold {
+            color: #E8C547;
+            font-weight: 500;
+        }
         .stats-bar {
             background: #F4F7F9;
             padding: 8px 20px;
@@ -645,9 +673,18 @@
 <body>
     <div class="container">
         <div class="header">
-            <img src="/toplist333.png" alt="Anti333.AI - Генератор юридических аргументов против снижения неустойки по ст. 333 ГК РФ" class="header-banner">
-            <h1>Anti333.AI</h1>
-            <p>Генератор юридических аргументов против снижения неустойки по ст. 333 ГК РФ</p>
+            <div class="header-content">
+                <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
+                <div class="header-text">
+                    <div class="header-title">
+                        <span class="anti">Anti</span><span class="num">333</span><span class="ai">.AI</span>
+                    </div>
+                    <div class="header-subtitle">
+                        <span class="header-subtitle-gold">Генератор юридических аргументов</span><br>
+                        против снижения неустойки по ст. 333 ГК РФ
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="stats-bar">
