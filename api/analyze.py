@@ -120,6 +120,79 @@ def extract_relevant_excerpt(full_text: str, query: str, max_length: int = 500) 
     return best_excerpt
 
 
+def calculate_keyword_score(text: str, query: str) -> float:
+    """
+    Вычисляет keyword score на основе совпадения ключевых слов.
+    Возвращает значение от 0 до 1.
+    """
+    if not text or not query:
+        return 0.0
+
+    text_lower = text.lower()
+    query_lower = query.lower()
+
+    # Извлекаем слова из запроса (минимум 3 символа)
+    query_words = [w for w in re.findall(r'\b\w+\b', query_lower) if len(w) >= 3]
+    if not query_words:
+        return 0.0
+
+    # Считаем совпадения
+    matches = 0
+    for word in query_words:
+        if word in text_lower:
+            matches += 1
+
+    # Бонус за точные фразы (2+ слова подряд)
+    phrase_bonus = 0
+    for i in range(len(query_words) - 1):
+        phrase = query_words[i] + " " + query_words[i + 1]
+        if phrase in text_lower:
+            phrase_bonus += 0.2
+
+    base_score = matches / len(query_words) if query_words else 0
+    return min(1.0, base_score + phrase_bonus)
+
+
+def hybrid_rerank(results: list, query: str, vector_weight: float = 0.7, keyword_weight: float = 0.3) -> list:
+    """
+    Гибридное переранжирование: комбинация векторного сходства и keyword matching.
+
+    Args:
+        results: Результаты векторного поиска
+        query: Исходный поисковый запрос
+        vector_weight: Вес векторного скора (по умолчанию 0.7)
+        keyword_weight: Вес keyword скора (по умолчанию 0.3)
+
+    Returns:
+        Переранжированный список результатов
+    """
+    if not results:
+        return results
+
+    for item in results:
+        # 1. Векторный скор (уже есть от Supabase)
+        vector_score = item.get('similarity', 0.5)
+
+        # 2. Keyword скор (вычисляем по summary + full_text)
+        searchable_text = (item.get('summary', '') + ' ' + item.get('full_text', '')[:2000])
+        keyword_score = calculate_keyword_score(searchable_text, query)
+
+        # 3. Вес типа документа
+        category = item.get('category', 'court_decision')
+        type_weight = DOCUMENT_WEIGHTS.get(category, 1.0)
+
+        # 4. Финальный гибридный скор
+        hybrid_score = (vector_weight * vector_score + keyword_weight * keyword_score) * type_weight
+
+        item['vector_score'] = vector_score
+        item['keyword_score'] = keyword_score
+        item['hybrid_score'] = hybrid_score
+
+    # Сортируем по гибридному скору
+    results.sort(key=lambda x: x.get('hybrid_score', 0), reverse=True)
+    return results
+
+
 def rerank_by_document_type(results: list) -> list:
     """Переранжирование результатов с учётом веса типа документа"""
     if not results:
@@ -543,8 +616,8 @@ class handler(BaseHTTPRequestHandler):
             try:
                 search_query = claim_text[:5000]  # Используем начало иска для поиска
                 court_cases = search_court_decisions(search_query)
-                # Переранжирование с учётом веса типа документа
-                court_cases = rerank_by_document_type(court_cases)
+                # Гибридное переранжирование: векторный скор + keyword matching + вес типа
+                court_cases = hybrid_rerank(court_cases, search_query)
             except Exception as e:
                 print(f"RAG search failed: {e}")  # Продолжаем без RAG если поиск не удался
 
