@@ -3,6 +3,7 @@ import json
 import os
 import urllib.request
 import urllib.parse
+import urllib.error
 
 # API Keys
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
@@ -173,8 +174,8 @@ def get_embedding(text: str) -> list:
     if not OPENAI_API_KEY:
         raise Exception("OPENAI_API_KEY не настроен")
 
-    # Ограничиваем текст (max ~8000 токенов для embedding модели)
-    text = text[:30000]
+    # Ограничиваем текст (max ~8000 токенов, для русского ~15000 символов)
+    text = text[:15000]
 
     data = json.dumps({
         "input": text,
@@ -190,9 +191,13 @@ def get_embedding(text: str) -> list:
         }
     )
 
-    with urllib.request.urlopen(req, timeout=30) as response:
-        result = json.loads(response.read().decode('utf-8'))
-        return result['data'][0]['embedding']
+    try:
+        with urllib.request.urlopen(req, timeout=30) as response:
+            result = json.loads(response.read().decode('utf-8'))
+            return result['data'][0]['embedding']
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode('utf-8')
+        raise Exception(f"Ошибка OpenAI Embedding: {error_body[:200]}")
 
 
 def supabase_request(endpoint: str, method: str = "GET", data: dict = None):
