@@ -652,6 +652,7 @@
             <button class="main-tab" onclick="switchMainTab('calculator')">Калькулятор</button>
             <button class="main-tab" onclick="switchMainTab('templates')">Шаблоны</button>
             <button class="main-tab" onclick="switchMainTab('comparison')">Сравнение</button>
+            <button class="main-tab" onclick="switchMainTab('knowledge')">📚 База знаний</button>
         </div>
 
         <!-- Generator Tab -->
@@ -917,6 +918,68 @@
             </div>
         </div>
 
+        <!-- Knowledge Base Tab -->
+        <div id="knowledge-panel" class="tab-panel">
+            <div style="padding: 25px;">
+                <h2 class="section-title">📚 База судебных решений</h2>
+                <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Добавляйте судебные решения для улучшения качества генерации аргументов.</p>
+
+                <div class="calculator-layout">
+                    <!-- Форма добавления -->
+                    <div class="calc-form">
+                        <h4 style="margin-bottom: 15px; color: #1E3A5F;">Добавить решение</h4>
+                        <div class="calc-row">
+                            <label>Номер дела *</label>
+                            <input type="text" id="kbCaseNumber" placeholder="А40-12345/2024">
+                        </div>
+                        <div class="calc-row">
+                            <label>Суд</label>
+                            <input type="text" id="kbCourtName" placeholder="Арбитражный суд г. Москвы">
+                        </div>
+                        <div class="calc-row">
+                            <label>Дата решения</label>
+                            <input type="date" id="kbDecisionDate">
+                        </div>
+                        <div class="calc-row">
+                            <label>Краткое содержание *</label>
+                            <textarea id="kbSummary" rows="3" placeholder="О чём дело, какие обстоятельства..."></textarea>
+                        </div>
+                        <div class="calc-row">
+                            <label>Полный текст решения</label>
+                            <textarea id="kbFullText" rows="5" placeholder="Вставьте полный текст или ключевые выдержки..."></textarea>
+                        </div>
+                        <div class="calc-row">
+                            <label>Ключевые выводы (через запятую)</label>
+                            <input type="text" id="kbKeyPoints" placeholder="суд отказал в снижении, ответчик не доказал несоразмерность">
+                        </div>
+                        <div class="calc-row" style="display: flex; gap: 20px; align-items: center;">
+                            <label style="display: flex; align-items: center; gap: 8px; margin: 0;">
+                                <input type="checkbox" id="kbPenaltyReduced"> Неустойка снижена
+                            </label>
+                            <div style="flex: 1;">
+                                <input type="number" id="kbReductionPercent" placeholder="На сколько % снижена" style="width: 100%;">
+                            </div>
+                        </div>
+                        <div id="kbError" style="display: none; background: #FFF5F5; border: 1px solid #FC8181; border-radius: 6px; padding: 10px; margin-top: 15px; color: #C53030; font-size: 13px;"></div>
+                        <div id="kbSuccess" style="display: none; background: #F0FFF4; border: 1px solid #68D391; border-radius: 6px; padding: 10px; margin-top: 15px; color: #276749; font-size: 13px;"></div>
+                        <div class="button-group" style="margin-top: 15px;">
+                            <button class="btn btn-primary" onclick="addCourtDecision()">Добавить в базу</button>
+                            <button class="btn btn-secondary" onclick="clearKbForm()">Очистить</button>
+                        </div>
+                    </div>
+
+                    <!-- Список решений -->
+                    <div>
+                        <h4 style="margin-bottom: 15px; color: #1E3A5F;">Сохранённые решения (<span id="kbCount">0</span>)</h4>
+                        <div id="kbList" style="max-height: 500px; overflow-y: auto;">
+                            <div style="text-align: center; padding: 40px; color: #8899A6;">Загрузка...</div>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" onclick="loadKnowledgeBase()" style="margin-top: 10px;">🔄 Обновить список</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="footer">
             <div class="author">Разработчик: Кирилл Трубицын</div>
             <button class="clear-cache-btn" onclick="clearAllCache()" title="Очистить кэш результатов">🗑️ Очистить кэш</button>
@@ -1156,6 +1219,120 @@
             }
         }
 
+        // === База знаний (Knowledge Base) ===
+        async function loadKnowledgeBase() {
+            const list = document.getElementById('kbList');
+            const count = document.getElementById('kbCount');
+            try {
+                const response = await fetch('/api/knowledge');
+                const data = await response.json();
+                if (data.error) {
+                    list.innerHTML = `<div style="text-align: center; padding: 20px; color: #E53E3E;">${data.error}</div>`;
+                    return;
+                }
+                const decisions = data.decisions || [];
+                count.textContent = decisions.length;
+                if (decisions.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; padding: 40px; color: #8899A6;">Нет сохранённых решений. Добавьте первое!</div>';
+                    return;
+                }
+                list.innerHTML = decisions.map(d => `
+                    <div style="background: white; border: 1px solid #E1E8ED; border-radius: 8px; padding: 15px; margin-bottom: 10px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <strong style="color: #1E3A5F;">${d.case_number || 'Без номера'}</strong>
+                                <span style="color: #8899A6; font-size: 12px; margin-left: 10px;">${d.court_name || ''}</span>
+                            </div>
+                            <button onclick="deleteCourtDecision(${d.id})" style="background: none; border: none; color: #E53E3E; cursor: pointer; font-size: 16px;" title="Удалить">✕</button>
+                        </div>
+                        <div style="color: #4A5568; font-size: 13px; margin-top: 8px;">${(d.summary || '').substring(0, 150)}${d.summary && d.summary.length > 150 ? '...' : ''}</div>
+                        <div style="margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            ${d.penalty_reduced ? `<span style="background: #FED7D7; color: #C53030; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Снижена${d.reduction_percent ? ' на ' + d.reduction_percent + '%' : ''}</span>` : '<span style="background: #C6F6D5; color: #276749; padding: 2px 8px; border-radius: 4px; font-size: 11px;">Не снижена</span>'}
+                            ${d.decision_date ? `<span style="color: #8899A6; font-size: 11px;">📅 ${d.decision_date}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = `<div style="text-align: center; padding: 20px; color: #E53E3E;">Ошибка загрузки: ${e.message}</div>`;
+            }
+        }
+
+        async function addCourtDecision() {
+            const errorEl = document.getElementById('kbError');
+            const successEl = document.getElementById('kbSuccess');
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            const caseNumber = document.getElementById('kbCaseNumber').value.trim();
+            const summary = document.getElementById('kbSummary').value.trim();
+
+            if (!caseNumber || !summary) {
+                errorEl.textContent = 'Заполните номер дела и краткое содержание';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const data = {
+                action: 'add',
+                case_number: caseNumber,
+                court_name: document.getElementById('kbCourtName').value.trim(),
+                decision_date: document.getElementById('kbDecisionDate').value || null,
+                summary: summary,
+                full_text: document.getElementById('kbFullText').value.trim(),
+                key_points: document.getElementById('kbKeyPoints').value.split(',').map(s => s.trim()).filter(s => s),
+                penalty_reduced: document.getElementById('kbPenaltyReduced').checked,
+                reduction_percent: parseFloat(document.getElementById('kbReductionPercent').value) || null
+            };
+
+            try {
+                const response = await fetch('/api/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const result = await response.json();
+                if (result.error) {
+                    errorEl.textContent = result.error;
+                    errorEl.style.display = 'block';
+                } else {
+                    successEl.textContent = '✓ Решение добавлено в базу знаний!';
+                    successEl.style.display = 'block';
+                    clearKbForm();
+                    loadKnowledgeBase();
+                }
+            } catch (e) {
+                errorEl.textContent = 'Ошибка: ' + e.message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        async function deleteCourtDecision(id) {
+            if (!confirm('Удалить это решение из базы знаний?')) return;
+            try {
+                await fetch('/api/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete', id: id })
+                });
+                loadKnowledgeBase();
+            } catch (e) {
+                alert('Ошибка удаления: ' + e.message);
+            }
+        }
+
+        function clearKbForm() {
+            document.getElementById('kbCaseNumber').value = '';
+            document.getElementById('kbCourtName').value = '';
+            document.getElementById('kbDecisionDate').value = '';
+            document.getElementById('kbSummary').value = '';
+            document.getElementById('kbFullText').value = '';
+            document.getElementById('kbKeyPoints').value = '';
+            document.getElementById('kbPenaltyReduced').checked = false;
+            document.getElementById('kbReductionPercent').value = '';
+            document.getElementById('kbError').style.display = 'none';
+            document.getElementById('kbSuccess').style.display = 'none';
+        }
+
         // === Сжатие текста для экономии токенов ===
         function compressText(text) {
             if (!text) return '';
@@ -1181,6 +1358,8 @@
             document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
             document.querySelector(`.main-tab[onclick="switchMainTab('${tabName}')"]`).classList.add('active');
             document.getElementById(`${tabName}-panel`).classList.add('active');
+            // Загружаем базу знаний при переходе на эту вкладку
+            if (tabName === 'knowledge') loadKnowledgeBase();
         }
 
         function selectModel(el) {
