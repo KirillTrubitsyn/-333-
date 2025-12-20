@@ -8,6 +8,93 @@ import urllib.parse
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+# Gemini setup for document parsing
+import google.generativeai as genai
+from google.generativeai.types import HarmCategory, HarmBlockThreshold
+
+if GEMINI_API_KEY:
+    genai.configure(api_key=GEMINI_API_KEY)
+
+SAFETY_SETTINGS = {
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
+}
+
+PARSE_DOCUMENT_PROMPT = """Ты — система извлечения данных из судебных решений.
+
+Проанализируй текст судебного решения и извлеки следующую информацию в формате JSON:
+
+{
+  "case_number": "номер дела (например: А40-12345/2024)",
+  "court_name": "название суда",
+  "decision_date": "дата решения в формате YYYY-MM-DD",
+  "summary": "краткое содержание дела (2-4 предложения): о чём спор, какие обстоятельства, какое решение вынес суд",
+  "key_points": ["ключевой вывод 1", "ключевой вывод 2", "ключевой вывод 3"],
+  "penalty_reduced": true или false (была ли снижена неустойка по ст. 333 ГК РФ),
+  "reduction_percent": число или null (на сколько процентов снижена неустойка, если применима ст. 333)
+}
+
+ПРАВИЛА:
+1. Если какое-то поле невозможно определить — оставь пустую строку или null
+2. Для key_points выдели 2-5 самых важных выводов суда
+3. penalty_reduced = true ТОЛЬКО если суд явно применил ст. 333 ГК РФ и снизил неустойку
+4. reduction_percent — если известно на сколько % снижена неустойка (например, с 1 млн до 500 тыс = 50%)
+5. Верни ТОЛЬКО JSON без дополнительного текста
+
+Текст решения:
+"""
+
+
+def parse_court_document(text: str) -> dict:
+    """Парсинг судебного решения с помощью Gemini"""
+    if not GEMINI_API_KEY:
+        raise Exception("Gemini API не настроен")
+
+    model = genai.GenerativeModel(model_name="gemini-2.0-flash")
+
+    # Ограничиваем текст
+    text = text[:50000]
+
+    response = model.generate_content(
+        PARSE_DOCUMENT_PROMPT + text,
+        generation_config=genai.GenerationConfig(
+            temperature=0.1,
+            max_output_tokens=2048,
+        ),
+        safety_settings=SAFETY_SETTINGS
+    )
+
+    try:
+        result_text = response.text
+    except (ValueError, AttributeError):
+        if response.candidates and len(response.candidates) > 0:
+            candidate = response.candidates[0]
+            if hasattr(candidate, 'content') and candidate.content:
+                if hasattr(candidate.content, 'parts') and candidate.content.parts:
+                    result_text = candidate.content.parts[0].text
+                else:
+                    raise Exception("Не удалось получить ответ от AI")
+        else:
+            raise Exception("Не удалось получить ответ от AI")
+
+    # Извлекаем JSON из ответа
+    result_text = result_text.strip()
+    if result_text.startswith('```json'):
+        result_text = result_text[7:]
+    if result_text.startswith('```'):
+        result_text = result_text[3:]
+    if result_text.endswith('```'):
+        result_text = result_text[:-3]
+    result_text = result_text.strip()
+
+    try:
+        return json.loads(result_text)
+    except json.JSONDecodeError as e:
+        raise Exception(f"Ошибка парсинга JSON: {str(e)[:100]}")
 
 
 def get_embedding(text: str) -> list:
@@ -219,6 +306,23 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(json.dumps({"success": True, "message": "Удалено"}).encode())
+
+            elif action == 'parse':
+                # Парсинг документа с помощью AI
+                document_text = data.get('text', '')
+                if not document_text:
+                    raise Exception("Текст документа не предоставлен")
+
+                parsed_data = parse_court_document(document_text)
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True,
+                    "data": parsed_data
+                }).encode())
 
             else:
                 raise Exception(f"Неизвестное действие: {action}")

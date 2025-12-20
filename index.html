@@ -928,6 +928,18 @@
                     <!-- Форма добавления -->
                     <div class="calc-form">
                         <h4 style="margin-bottom: 15px; color: #1E3A5F;">Добавить решение</h4>
+
+                        <!-- Загрузка документа -->
+                        <div class="calc-row" style="background: #F8FAFC; border: 2px dashed #CBD5E0; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
+                            <label style="display: block; margin-bottom: 10px; font-weight: 600; color: #1E3A5F;">📄 Загрузить документ (PDF/DOCX)</label>
+                            <input type="file" id="kbDocumentFile" accept=".pdf,.docx,.doc" style="margin-bottom: 10px;">
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button class="btn btn-secondary" onclick="parseKbDocument()" id="kbParseBtn">🔍 Распознать и заполнить</button>
+                                <span id="kbParseStatus" style="font-size: 12px; color: #8899A6;"></span>
+                            </div>
+                            <p style="font-size: 11px; color: #8899A6; margin-top: 8px; margin-bottom: 0;">AI автоматически извлечёт номер дела, суд, дату и краткое содержание</p>
+                        </div>
+
                         <div class="calc-row">
                             <label>Номер дела *</label>
                             <input type="text" id="kbCaseNumber" placeholder="А40-12345/2024">
@@ -1329,8 +1341,108 @@
             document.getElementById('kbKeyPoints').value = '';
             document.getElementById('kbPenaltyReduced').checked = false;
             document.getElementById('kbReductionPercent').value = '';
+            document.getElementById('kbDocumentFile').value = '';
+            document.getElementById('kbParseStatus').textContent = '';
             document.getElementById('kbError').style.display = 'none';
             document.getElementById('kbSuccess').style.display = 'none';
+        }
+
+        async function parseKbDocument() {
+            const fileInput = document.getElementById('kbDocumentFile');
+            const statusEl = document.getElementById('kbParseStatus');
+            const parseBtn = document.getElementById('kbParseBtn');
+            const errorEl = document.getElementById('kbError');
+
+            errorEl.style.display = 'none';
+
+            if (!fileInput.files || !fileInput.files[0]) {
+                statusEl.textContent = '❌ Выберите файл';
+                statusEl.style.color = '#E53E3E';
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const fileName = file.name.toLowerCase();
+
+            parseBtn.disabled = true;
+            statusEl.textContent = '⏳ Извлечение текста...';
+            statusEl.style.color = '#8899A6';
+
+            try {
+                let documentText = '';
+
+                if (fileName.endsWith('.docx') || fileName.endsWith('.doc')) {
+                    // DOCX: используем mammoth
+                    const arrayBuffer = await file.arrayBuffer();
+                    const result = await mammoth.extractRawText({ arrayBuffer });
+                    documentText = result.value;
+                } else if (fileName.endsWith('.pdf')) {
+                    // PDF: используем pdf.js
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    const textParts = [];
+                    for (let i = 1; i <= pdf.numPages; i++) {
+                        const page = await pdf.getPage(i);
+                        const textContent = await page.getTextContent();
+                        const pageText = textContent.items.map(item => item.str).join(' ');
+                        textParts.push(pageText);
+                    }
+                    documentText = textParts.join('\n\n');
+                } else {
+                    throw new Error('Неподдерживаемый формат. Используйте PDF или DOCX.');
+                }
+
+                if (!documentText || documentText.trim().length < 100) {
+                    throw new Error('Не удалось извлечь текст из документа. Попробуйте другой файл.');
+                }
+
+                statusEl.textContent = '🤖 AI анализирует документ...';
+
+                // Отправляем на парсинг AI
+                const response = await fetch('/api/knowledge', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'parse',
+                        text: documentText
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                if (!result.success || !result.data) {
+                    throw new Error('Не удалось распознать данные');
+                }
+
+                // Заполняем форму
+                const data = result.data;
+                if (data.case_number) document.getElementById('kbCaseNumber').value = data.case_number;
+                if (data.court_name) document.getElementById('kbCourtName').value = data.court_name;
+                if (data.decision_date) document.getElementById('kbDecisionDate').value = data.decision_date;
+                if (data.summary) document.getElementById('kbSummary').value = data.summary;
+                if (data.key_points && Array.isArray(data.key_points)) {
+                    document.getElementById('kbKeyPoints').value = data.key_points.join(', ');
+                }
+                if (data.penalty_reduced) document.getElementById('kbPenaltyReduced').checked = true;
+                if (data.reduction_percent) document.getElementById('kbReductionPercent').value = data.reduction_percent;
+
+                // Сохраняем полный текст
+                document.getElementById('kbFullText').value = documentText.substring(0, 50000);
+
+                statusEl.textContent = '✅ Данные извлечены! Проверьте и добавьте в базу.';
+                statusEl.style.color = '#38A169';
+
+            } catch (e) {
+                statusEl.textContent = '';
+                errorEl.textContent = 'Ошибка: ' + e.message;
+                errorEl.style.display = 'block';
+            } finally {
+                parseBtn.disabled = false;
+            }
         }
 
         // === Сжатие текста для экономии токенов ===
