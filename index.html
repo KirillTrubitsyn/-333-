@@ -2528,7 +2528,7 @@
         function copyToClipboard() { navigator.clipboard.writeText(lastResult || document.getElementById('output').innerText).then(() => alert('Скопировано!')); }
 
         async function downloadDocx() {
-            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Footer, PageNumber } = docx;
             const text = lastResult || document.getElementById('output').innerText;
             const lines = text.split('\n');
             const children = [];
@@ -2612,6 +2612,16 @@
             const doc = new Document({
                 sections: [{
                     properties: { page: { margin: { top: 900, right: 1000, bottom: 900, left: 1701 } } },
+                    footers: {
+                        default: new Footer({
+                            children: [
+                                new Paragraph({
+                                    children: [new TextRun({ children: [PageNumber.CURRENT], size: 20, color: "808080" })],
+                                    alignment: AlignmentType.CENTER
+                                })
+                            ]
+                        })
+                    },
                     children
                 }]
             });
