@@ -1,4 +1,4 @@
-const CACHE_NAME = 'arg333-cache-v1';
+const CACHE_NAME = 'anti333-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
