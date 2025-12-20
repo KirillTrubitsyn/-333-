@@ -2,12 +2,15 @@ from http.server import BaseHTTPRequestHandler
 import json
 import os
 import re
+import urllib.request
 from api.rate_limiter import get_client_ip, check_rate_limit, send_rate_limit_error, add_rate_limit_headers
 
 # API Keys
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
 # Gemini setup
 import google.generativeai as genai
@@ -67,7 +70,71 @@ def compress_text(text: str) -> str:
     return text.strip()
 
 
-def build_system_prompt(rates_info: str) -> str:
+def search_court_decisions(query_text: str) -> list:
+    """Поиск похожих судебных решений в базе знаний"""
+    if not SUPABASE_URL or not SUPABASE_KEY or not OPENAI_API_KEY:
+        return []
+
+    try:
+        # Получаем embedding для запроса
+        text = query_text[:30000]
+        embed_data = json.dumps({
+            "input": text,
+            "model": "text-embedding-3-small"
+        }).encode('utf-8')
+
+        embed_req = urllib.request.Request(
+            "https://api.openai.com/v1/embeddings",
+            data=embed_data,
+            headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "Content-Type": "application/json"
+            }
+        )
+
+        with urllib.request.urlopen(embed_req, timeout=15) as response:
+            embed_result = json.loads(response.read().decode('utf-8'))
+            query_embedding = embed_result['data'][0]['embedding']
+
+        # Поиск в Supabase
+        search_data = json.dumps({
+            "query_embedding": query_embedding,
+            "match_count": 3,
+            "match_threshold": 0.5
+        }).encode('utf-8')
+
+        search_req = urllib.request.Request(
+            f"{SUPABASE_URL}/rest/v1/rpc/search_decisions",
+            data=search_data,
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}",
+                "Content-Type": "application/json"
+            },
+            method="POST"
+        )
+
+        with urllib.request.urlopen(search_req, timeout=10) as response:
+            return json.loads(response.read().decode('utf-8'))
+    except Exception as e:
+        print(f"Court decisions search error: {e}")
+        return []
+
+
+def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
+    # Формируем блок с судебной практикой
+    court_practice = ""
+    if court_cases:
+        court_practice = "\n\nРЕЛЕВАНТНАЯ СУДЕБНАЯ ПРАКТИКА (используй в аргументации):\n"
+        for i, case in enumerate(court_cases, 1):
+            reduced = "снижена" if case.get('penalty_reduced') else "не снижена"
+            percent = f" на {case.get('reduction_percent')}%" if case.get('reduction_percent') else ""
+            court_practice += f"""
+{i}. Дело {case.get('case_number', 'N/A')} ({case.get('court_name', '')})
+   Суть: {case.get('summary', '')[:300]}
+   Исход: неустойка {reduced}{percent}
+   Ключевые выводы: {', '.join(case.get('key_points', [])[:3]) if case.get('key_points') else 'нет данных'}
+"""
     return f"""Ты — опытный российский юрист. Твоя задача — создать профессиональный аналитический документ в стиле Кузнецова.
 
 СТИЛЬ КУЗНЕЦОВА — принципы:
@@ -107,12 +174,13 @@ def build_system_prompt(rates_info: str) -> str:
 
 АКТУАЛЬНЫЕ СТАВКИ ЦБ РФ:
 {rates_info}
-
+{court_practice}
 ФОРМАТ ВЫВОДА:
 - Чистый текст без markdown (без **, ##, *)
 - Нумерация разделов арабскими цифрами с точкой
 - Абзацы разделены пустой строкой
-- Профессиональный юридический язык"""
+- Профессиональный юридический язык
+- Если есть релевантная судебная практика — ссылайся на неё в аргументации"""
 
 
 def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comments: str) -> str:
@@ -348,7 +416,15 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
-            system_prompt = build_system_prompt(rates_info)
+            # Поиск похожих судебных решений в базе знаний (RAG)
+            court_cases = []
+            try:
+                search_query = claim_text[:5000]  # Используем начало иска для поиска
+                court_cases = search_court_decisions(search_query)
+            except Exception as e:
+                print(f"RAG search failed: {e}")  # Продолжаем без RAG если поиск не удался
+
+            system_prompt = build_system_prompt(rates_info, court_cases)
             user_prompt = build_user_prompt(
                 claim_text,
                 response_text,

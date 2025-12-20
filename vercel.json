@@ -5,6 +5,10 @@
       "maxDuration": 300,
       "memory": 1024
     },
+    "api/knowledge.py": {
+      "maxDuration": 60,
+      "memory": 512
+    },
     "api/rates.py": {
       "maxDuration": 10
     },
