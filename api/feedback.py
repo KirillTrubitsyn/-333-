@@ -66,12 +66,33 @@ class handler(BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"error": str(e)}).encode())
 
     def do_POST(self):
-        """Добавить отзыв"""
+        """Добавить или удалить отзыв"""
         try:
             content_length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
 
+            action = data.get('action', 'add')
+
+            if action == 'delete':
+                # Удаление отзыва
+                feedback_id = data.get('id')
+                if not feedback_id:
+                    raise Exception("ID отзыва не указан")
+
+                supabase_request(f"feedback?id=eq.{feedback_id}", method="DELETE")
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True,
+                    "message": "Отзыв удалён"
+                }).encode())
+                return
+
+            # Добавление отзыва
             user_name = data.get('user_name', 'Аноним')
             user_role = data.get('user_role', 'unknown')
             feedback_type = data.get('feedback_type', 'other')
