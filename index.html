@@ -718,9 +718,72 @@
             .comparison-container { grid-template-columns: 1fr; }
             .stats-bar { flex-wrap: wrap; }
         }
+        /* Access Control */
+        .access-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(26, 39, 68, 0.95); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+        .access-modal { background: white; border-radius: 16px; padding: 40px; max-width: 420px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .access-modal h2 { color: #1E3A5F; margin-bottom: 10px; font-size: 24px; }
+        .access-modal p { color: #8899A6; margin-bottom: 25px; font-size: 14px; }
+        .access-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .access-tab { flex: 1; padding: 12px; border: 2px solid #E1E8ED; border-radius: 8px; background: white; cursor: pointer; font-size: 14px; font-weight: 500; color: #4A5568; transition: all 0.2s; }
+        .access-tab:hover { border-color: #C9A227; }
+        .access-tab.active { border-color: #C9A227; background: #FFF9E6; color: #1E3A5F; }
+        .access-input { width: 100%; padding: 14px; border: 2px solid #E1E8ED; border-radius: 8px; font-size: 15px; margin-bottom: 12px; transition: border-color 0.2s; }
+        .access-input:focus { outline: none; border-color: #C9A227; }
+        .access-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #C9A227, #E8C547); border: none; border-radius: 8px; color: #1E3A5F; font-size: 16px; font-weight: 600; cursor: pointer; transition: transform 0.2s; }
+        .access-btn:hover { transform: translateY(-2px); }
+        .access-error { color: #E53E3E; font-size: 13px; margin-top: 10px; display: none; }
+        .access-hint { color: #8899A6; font-size: 12px; margin-top: 15px; }
+        /* Feedback Button */
+        .feedback-btn { position: fixed; bottom: 20px; right: 20px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 50px; padding: 12px 20px; font-size: 14px; font-weight: 500; cursor: pointer; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4); z-index: 999; transition: all 0.3s; display: flex; align-items: center; gap: 8px; }
+        .feedback-btn:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5); }
+        .user-badge { position: fixed; top: 20px; right: 20px; background: white; padding: 8px 16px; border-radius: 20px; font-size: 12px; color: #4A5568; box-shadow: 0 2px 10px rgba(0,0,0,0.1); z-index: 999; display: flex; align-items: center; gap: 8px; }
+        .user-badge .role { font-weight: 600; color: #C9A227; }
+        .user-badge .logout { background: none; border: none; color: #E53E3E; cursor: pointer; font-size: 12px; margin-left: 8px; }
+        /* Hidden for testers */
+        .admin-only { display: block; }
+        body.tester-mode .admin-only { display: none !important; }
     </style>
 </head>
 <body>
+    <!-- Access Control Overlay -->
+    <div id="accessOverlay" class="access-overlay">
+        <div class="access-modal">
+            <h2>🔐 Вход в Anti333.AI</h2>
+            <p>Выберите тип доступа для продолжения</p>
+
+            <div class="access-tabs">
+                <button class="access-tab active" onclick="switchAccessTab('tester')">👤 Тестировщик</button>
+                <button class="access-tab" onclick="switchAccessTab('admin')">👑 Администратор</button>
+            </div>
+
+            <div id="testerForm">
+                <input type="text" id="inviteCode" class="access-input" placeholder="Инвайт-код">
+                <input type="text" id="testerName" class="access-input" placeholder="Ваше имя">
+                <button class="access-btn" onclick="loginAsTester()">Войти как тестировщик</button>
+            </div>
+
+            <div id="adminForm" style="display: none;">
+                <input type="password" id="adminPassword" class="access-input" placeholder="Пароль администратора">
+                <button class="access-btn" onclick="loginAsAdmin()">Войти как администратор</button>
+            </div>
+
+            <div id="accessError" class="access-error"></div>
+            <p class="access-hint">Получите инвайт-код у администратора</p>
+        </div>
+    </div>
+
+    <!-- User Badge -->
+    <div id="userBadge" class="user-badge" style="display: none;">
+        <span id="userName">-</span>
+        <span class="role" id="userRole">-</span>
+        <button class="logout" onclick="logout()">Выйти</button>
+    </div>
+
+    <!-- Feedback Button (for testers) -->
+    <button id="feedbackBtn" class="feedback-btn" style="display: none;" onclick="openFeedbackModal()">
+        💬 Оставить отзыв
+    </button>
+
     <div class="container">
         <div class="header">
             <div class="header-content">
@@ -1028,8 +1091,8 @@
                 <p style="color: #8899A6; margin-bottom: 20px; font-size: 13px;">Добавляйте судебные решения, постановления пленумов, обзоры практики и научные статьи.</p>
 
                 <div class="calculator-layout">
-                    <!-- Форма добавления -->
-                    <div class="calc-form">
+                    <!-- Форма добавления (только для администраторов) -->
+                    <div class="calc-form admin-only">
                         <h4 style="margin-bottom: 15px; color: #1E3A5F;">Добавить документ</h4>
 
                         <!-- Тип документа -->
@@ -1109,7 +1172,10 @@
 
         <div class="footer">
             <div class="author">Разработчик: Кирилл Трубицын</div>
-            <button class="clear-cache-btn" onclick="clearAllCache()" title="Очистить кэш результатов">🗑️ Очистить кэш</button>
+            <div style="display: flex; gap: 10px;">
+                <button class="clear-cache-btn admin-only" onclick="openAdminPanel()" title="Панель администратора" style="background: linear-gradient(135deg, #667eea, #764ba2);">👑 Админ-панель</button>
+                <button class="clear-cache-btn" onclick="clearAllCache()" title="Очистить кэш результатов">🗑️ Очистить кэш</button>
+            </div>
         </div>
     </div>
 
@@ -1219,7 +1285,75 @@
             </div>
             <div class="modal-footer" style="padding: 15px 20px; border-top: 1px solid #E2E8F0; display: flex; gap: 10px; justify-content: flex-end;">
                 <button class="btn btn-secondary" onclick="closeDocPreview()">Закрыть</button>
-                <button class="btn btn-primary" onclick="saveDocChanges()">💾 Сохранить изменения</button>
+                <button class="btn btn-primary admin-only" onclick="saveDocChanges()">💾 Сохранить изменения</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Feedback Modal -->
+    <div id="feedbackModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>💬 Оставить отзыв</h3>
+                <button class="modal-close" onclick="closeFeedbackModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: #8899A6; margin-bottom: 15px; font-size: 13px;">Ваши предложения помогут улучшить приложение!</p>
+
+                <div class="calc-row">
+                    <label>Тип отзыва</label>
+                    <select id="feedbackType" style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                        <option value="suggestion">💡 Предложение</option>
+                        <option value="bug">🐛 Ошибка / баг</option>
+                        <option value="ux">🎨 Улучшение интерфейса</option>
+                        <option value="feature">✨ Новая функция</option>
+                        <option value="other">📝 Другое</option>
+                    </select>
+                </div>
+
+                <div class="calc-row">
+                    <label>Текущая страница</label>
+                    <input type="text" id="feedbackPage" readonly style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px; background: #F4F7F9;">
+                </div>
+
+                <div class="calc-row">
+                    <label>Ваше сообщение *</label>
+                    <textarea id="feedbackMessage" rows="5" placeholder="Опишите ваше предложение или проблему..." style="width: 100%; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px;"></textarea>
+                </div>
+
+                <div id="feedbackError" style="display: none; background: #FFF5F5; border: 1px solid #FC8181; border-radius: 6px; padding: 10px; color: #C53030; font-size: 13px;"></div>
+                <div id="feedbackSuccess" style="display: none; background: #F0FFF4; border: 1px solid #68D391; border-radius: 6px; padding: 10px; color: #276749; font-size: 13px;"></div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeFeedbackModal()">Отмена</button>
+                <button class="btn btn-primary" onclick="submitFeedback()">📤 Отправить</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal (for managing invite codes) -->
+    <div id="adminPanelModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>👑 Панель администратора</h3>
+                <button class="modal-close" onclick="closeAdminPanel()">×</button>
+            </div>
+            <div class="modal-body">
+                <h4 style="color: #1E3A5F; margin-bottom: 15px;">📋 Инвайт-коды</h4>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <input type="text" id="newInviteCode" placeholder="Новый код (или автогенерация)" style="flex: 1; padding: 10px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                    <button class="btn btn-primary" onclick="generateInviteCode()">Создать код</button>
+                </div>
+
+                <div id="inviteCodesList" style="max-height: 300px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 20px; color: #8899A6;">Загрузка...</div>
+                </div>
+
+                <h4 style="color: #1E3A5F; margin: 25px 0 15px;">📬 Последние отзывы</h4>
+                <div id="feedbackList" style="max-height: 300px; overflow-y: auto;">
+                    <div style="text-align: center; padding: 20px; color: #8899A6;">Загрузка...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -1458,7 +1592,7 @@
                                 <strong style="color: #1E3A5F;">${hasNumber && d.case_number ? d.case_number : (d.summary || '').substring(0, 50)}</strong>
                                 <span style="color: #8899A6; font-size: 12px; margin-left: 10px;">${d.court_name || ''}</span>
                             </div>
-                            <div style="display: flex; gap: 8px;">
+                            <div style="display: flex; gap: 8px;" class="admin-only">
                                 <button onclick="openDocPreview(${d.id})" style="background: none; border: none; color: #3182CE; cursor: pointer; font-size: 14px;" title="Просмотр и редактирование">✏️</button>
                                 <button onclick="deleteCourtDecision(${d.id})" style="background: none; border: none; color: #E53E3E; cursor: pointer; font-size: 14px;" title="Удалить">✕</button>
                             </div>
@@ -3237,6 +3371,373 @@
                     });
             });
         }
+
+        // === ACCESS CONTROL SYSTEM ===
+        const ADMIN_PASSWORD = 'Braesecke1973';
+        const RESEND_API_KEY = 're_MhysWE4V_KNfSdbKveXhHnQf2vum8nHtP';
+        const ADMIN_EMAIL = '502198t@gmail.com';
+
+        let currentUser = null;
+
+        // Проверяем сохранённую сессию
+        function checkSavedSession() {
+            const saved = localStorage.getItem('anti333_user');
+            if (saved) {
+                try {
+                    currentUser = JSON.parse(saved);
+                    applyUserRole();
+                    hideAccessOverlay();
+                } catch (e) {
+                    localStorage.removeItem('anti333_user');
+                }
+            }
+        }
+
+        function switchAccessTab(tab) {
+            document.querySelectorAll('.access-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('testerForm').style.display = tab === 'tester' ? 'block' : 'none';
+            document.getElementById('adminForm').style.display = tab === 'admin' ? 'block' : 'none';
+            document.getElementById('accessError').style.display = 'none';
+        }
+
+        async function loginAsTester() {
+            const code = document.getElementById('inviteCode').value.trim();
+            const name = document.getElementById('testerName').value.trim();
+            const errorEl = document.getElementById('accessError');
+
+            if (!code) {
+                errorEl.textContent = 'Введите инвайт-код';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (!name) {
+                errorEl.textContent = 'Введите ваше имя';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                // Проверяем код через API
+                const response = await fetch('/api/access', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'verify_code', code, name })
+                });
+                const result = await response.json();
+
+                if (result.error) {
+                    errorEl.textContent = result.error;
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                currentUser = { name, role: 'tester', code };
+                localStorage.setItem('anti333_user', JSON.stringify(currentUser));
+                applyUserRole();
+                hideAccessOverlay();
+            } catch (e) {
+                errorEl.textContent = 'Ошибка подключения: ' + e.message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function loginAsAdmin() {
+            const password = document.getElementById('adminPassword').value;
+            const errorEl = document.getElementById('accessError');
+
+            if (password === ADMIN_PASSWORD) {
+                currentUser = { name: 'Администратор', role: 'admin' };
+                localStorage.setItem('anti333_user', JSON.stringify(currentUser));
+                applyUserRole();
+                hideAccessOverlay();
+            } else {
+                errorEl.textContent = 'Неверный пароль';
+                errorEl.style.display = 'block';
+            }
+        }
+
+        function applyUserRole() {
+            const badge = document.getElementById('userBadge');
+            const feedbackBtn = document.getElementById('feedbackBtn');
+
+            if (currentUser) {
+                document.getElementById('userName').textContent = currentUser.name;
+                document.getElementById('userRole').textContent = currentUser.role === 'admin' ? '👑 Админ' : '👤 Тестер';
+                badge.style.display = 'flex';
+
+                if (currentUser.role === 'tester') {
+                    document.body.classList.add('tester-mode');
+                    feedbackBtn.style.display = 'flex';
+                } else {
+                    document.body.classList.remove('tester-mode');
+                    feedbackBtn.style.display = 'none';
+                }
+            }
+        }
+
+        function hideAccessOverlay() {
+            document.getElementById('accessOverlay').style.display = 'none';
+        }
+
+        function logout() {
+            localStorage.removeItem('anti333_user');
+            currentUser = null;
+            document.body.classList.remove('tester-mode');
+            document.getElementById('userBadge').style.display = 'none';
+            document.getElementById('feedbackBtn').style.display = 'none';
+            document.getElementById('accessOverlay').style.display = 'flex';
+
+            // Очищаем формы
+            document.getElementById('inviteCode').value = '';
+            document.getElementById('testerName').value = '';
+            document.getElementById('adminPassword').value = '';
+        }
+
+        // === FEEDBACK SYSTEM ===
+        function openFeedbackModal() {
+            const modal = document.getElementById('feedbackModal');
+            document.getElementById('feedbackPage').value = getCurrentTabName();
+            document.getElementById('feedbackMessage').value = '';
+            document.getElementById('feedbackError').style.display = 'none';
+            document.getElementById('feedbackSuccess').style.display = 'none';
+            modal.classList.add('active');
+        }
+
+        function closeFeedbackModal() {
+            document.getElementById('feedbackModal').classList.remove('active');
+        }
+
+        function getCurrentTabName() {
+            const activeTab = document.querySelector('.main-tab.active');
+            return activeTab ? activeTab.textContent.trim() : 'Генератор';
+        }
+
+        async function submitFeedback() {
+            const type = document.getElementById('feedbackType').value;
+            const page = document.getElementById('feedbackPage').value;
+            const message = document.getElementById('feedbackMessage').value.trim();
+            const errorEl = document.getElementById('feedbackError');
+            const successEl = document.getElementById('feedbackSuccess');
+
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            if (!message) {
+                errorEl.textContent = 'Введите сообщение';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            try {
+                // Сохраняем в базу
+                const response = await fetch('/api/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_name: currentUser?.name || 'Аноним',
+                        user_role: currentUser?.role || 'unknown',
+                        feedback_type: type,
+                        page,
+                        message
+                    })
+                });
+                const result = await response.json();
+
+                if (result.error) {
+                    errorEl.textContent = result.error;
+                    errorEl.style.display = 'block';
+                    return;
+                }
+
+                // Отправляем email через Resend
+                await sendFeedbackEmail(type, page, message);
+
+                successEl.textContent = '✓ Спасибо! Ваш отзыв отправлен.';
+                successEl.style.display = 'block';
+
+                setTimeout(() => {
+                    closeFeedbackModal();
+                }, 2000);
+            } catch (e) {
+                errorEl.textContent = 'Ошибка: ' + e.message;
+                errorEl.style.display = 'block';
+            }
+        }
+
+        async function sendFeedbackEmail(type, page, message) {
+            const typeNames = {
+                'suggestion': 'Предложение',
+                'bug': 'Ошибка/баг',
+                'ux': 'Улучшение интерфейса',
+                'feature': 'Новая функция',
+                'other': 'Другое'
+            };
+
+            try {
+                await fetch('https://api.resend.com/emails', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${RESEND_API_KEY}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        from: 'Anti333.AI <onboarding@resend.dev>',
+                        to: ADMIN_EMAIL,
+                        subject: `[Anti333] ${typeNames[type] || type} от ${currentUser?.name || 'Аноним'}`,
+                        html: `
+                            <h2>Новый отзыв в Anti333.AI</h2>
+                            <p><b>От:</b> ${currentUser?.name || 'Аноним'}</p>
+                            <p><b>Роль:</b> ${currentUser?.role === 'admin' ? 'Администратор' : 'Тестировщик'}</p>
+                            <p><b>Тип:</b> ${typeNames[type] || type}</p>
+                            <p><b>Страница:</b> ${page}</p>
+                            <hr>
+                            <p><b>Сообщение:</b></p>
+                            <p style="background: #f5f5f5; padding: 15px; border-radius: 8px;">${message.replace(/\n/g, '<br>')}</p>
+                        `
+                    })
+                });
+            } catch (e) {
+                console.error('Email error:', e);
+                // Не блокируем, если email не отправился
+            }
+        }
+
+        // === ADMIN PANEL ===
+        function openAdminPanel() {
+            if (currentUser?.role !== 'admin') return;
+            document.getElementById('adminPanelModal').classList.add('active');
+            loadInviteCodes();
+            loadFeedbackList();
+        }
+
+        function closeAdminPanel() {
+            document.getElementById('adminPanelModal').classList.remove('active');
+        }
+
+        async function loadInviteCodes() {
+            const list = document.getElementById('inviteCodesList');
+            try {
+                const response = await fetch('/api/access?action=list_codes');
+                const data = await response.json();
+
+                if (data.error) {
+                    list.innerHTML = `<div style="color: #E53E3E;">${data.error}</div>`;
+                    return;
+                }
+
+                const codes = data.codes || [];
+                if (codes.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; padding: 20px; color: #8899A6;">Нет созданных кодов</div>';
+                    return;
+                }
+
+                list.innerHTML = codes.map(c => `
+                    <div style="background: #F4F7F9; padding: 12px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #1E3A5F; font-family: monospace;">${c.code}</strong>
+                            <div style="font-size: 11px; color: #8899A6; margin-top: 4px;">
+                                ${c.used_by ? `✓ Использован: ${c.used_by}` : '⏳ Не использован'}
+                                ${c.created_at ? ` • ${new Date(c.created_at).toLocaleDateString('ru-RU')}` : ''}
+                            </div>
+                        </div>
+                        <button onclick="deleteInviteCode('${c.code}')" style="background: none; border: none; color: #E53E3E; cursor: pointer;">✕</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = `<div style="color: #E53E3E;">Ошибка: ${e.message}</div>`;
+            }
+        }
+
+        async function generateInviteCode() {
+            let code = document.getElementById('newInviteCode').value.trim();
+            if (!code) {
+                // Генерируем случайный код
+                code = 'TEST-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+            }
+
+            try {
+                const response = await fetch('/api/access', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'create_code', code })
+                });
+                const result = await response.json();
+
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+
+                document.getElementById('newInviteCode').value = '';
+                loadInviteCodes();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function deleteInviteCode(code) {
+            if (!confirm(`Удалить код ${code}?`)) return;
+
+            try {
+                await fetch('/api/access', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'delete_code', code })
+                });
+                loadInviteCodes();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function loadFeedbackList() {
+            const list = document.getElementById('feedbackList');
+            try {
+                const response = await fetch('/api/feedback?action=list');
+                const data = await response.json();
+
+                if (data.error) {
+                    list.innerHTML = `<div style="color: #E53E3E;">${data.error}</div>`;
+                    return;
+                }
+
+                const feedbacks = data.feedbacks || [];
+                if (feedbacks.length === 0) {
+                    list.innerHTML = '<div style="text-align: center; padding: 20px; color: #8899A6;">Нет отзывов</div>';
+                    return;
+                }
+
+                const typeIcons = {
+                    'suggestion': '💡',
+                    'bug': '🐛',
+                    'ux': '🎨',
+                    'feature': '✨',
+                    'other': '📝'
+                };
+
+                list.innerHTML = feedbacks.map(f => `
+                    <div style="background: #F4F7F9; padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div>
+                                <span>${typeIcons[f.feedback_type] || '📝'}</span>
+                                <strong style="color: #1E3A5F;">${f.user_name}</strong>
+                                <span style="color: #8899A6; font-size: 11px; margin-left: 8px;">${f.page}</span>
+                            </div>
+                            <span style="color: #8899A6; font-size: 11px;">${new Date(f.created_at).toLocaleString('ru-RU')}</span>
+                        </div>
+                        <div style="margin-top: 8px; color: #4A5568; font-size: 13px;">${f.message}</div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                list.innerHTML = `<div style="color: #E53E3E;">Ошибка: ${e.message}</div>`;
+            }
+        }
+
+        // Инициализация при загрузке
+        document.addEventListener('DOMContentLoaded', () => {
+            checkSavedSession();
+        });
 
         // PWA Install prompt
         let deferredPrompt;
