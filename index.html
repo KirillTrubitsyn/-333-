@@ -592,8 +592,9 @@
         .calc-result-item.total .value { color: #C9A227; }
         /* Custom comparison rates */
         .comparison-rates-section { margin-top: 15px; padding-top: 15px; border-top: 1px solid #E1E8ED; }
-        .comparison-rate-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 8px; background: #F4F7F9; border-radius: 6px; margin-bottom: 6px; }
+        .comparison-rate-row { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; align-items: center; padding: 8px; background: #F4F7F9; border-radius: 6px; margin-bottom: 6px; }
         .comparison-rate-row input { width: 100%; padding: 6px 8px; border: 1px solid #E1E8ED; border-radius: 4px; font-size: 12px; }
+        .comparison-rate-row select { padding: 6px 8px; border: 1px solid #E1E8ED; border-radius: 4px; font-size: 11px; background: white; }
         .comparison-rate-row .remove-btn { background: #FC8181; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; }
         .comparison-rate-row .remove-btn:hover { background: #E53E3E; }
         .add-rate-btn { background: #E8F5E9; color: #48BB78; border: 1px dashed #48BB78; border-radius: 6px; padding: 8px; width: 100%; cursor: pointer; font-size: 12px; margin-top: 5px; }
@@ -2783,7 +2784,11 @@
             div.className = 'comparison-rate-row';
             div.id = `comparison-rate-${id}`;
             div.innerHTML = `
-                <input type="number" id="comparison-rate-value-${id}" placeholder="% годовых" step="0.1">
+                <input type="number" id="comparison-rate-value-${id}" placeholder="Ставка" step="0.1">
+                <select id="comparison-rate-type-${id}">
+                    <option value="year">% годовых</option>
+                    <option value="day">% в день</option>
+                </select>
                 <button type="button" class="remove-btn" onclick="removeComparisonRate(${id})">✕</button>
             `;
             list.appendChild(div);
@@ -2799,8 +2804,12 @@
             const rates = [];
             for (const id of comparisonRates) {
                 const value = parseFloat(document.getElementById(`comparison-rate-value-${id}`).value);
+                const type = document.getElementById(`comparison-rate-type-${id}`).value;
                 if (value > 0) {
-                    rates.push(value);
+                    // Конвертируем в годовую ставку для расчёта
+                    const yearRate = type === 'day' ? value * 365 : value;
+                    const label = type === 'day' ? `${value}% в день` : `${value}% годовых`;
+                    rates.push({ value, type, yearRate, label });
                 }
             }
             return rates;
@@ -2959,7 +2968,7 @@
             // Рассчитываем для дополнительных ставок сравнения
             const customRates = getComparisonRates();
             const customComparisons = [];
-            for (const rate of customRates) {
+            for (const rateObj of customRates) {
                 let customPenalty = 0;
                 let currentDebt = totalDebt;
                 let curDate = new Date(startDate);
@@ -2970,22 +2979,22 @@
                     if (payment.date > finDate) break;
                     const days = Math.ceil((payment.date - curDate) / (1000 * 60 * 60 * 24));
                     if (days > 0 && currentDebt > 0) {
-                        customPenalty += currentDebt * (rate / 100) * (days / 365);
+                        customPenalty += currentDebt * (rateObj.yearRate / 100) * (days / 365);
                     }
                     currentDebt = Math.max(0, currentDebt - payment.amount);
                     curDate = new Date(payment.date);
                 }
                 if (curDate < finDate && currentDebt > 0) {
                     const days = Math.ceil((finDate - curDate) / (1000 * 60 * 60 * 24));
-                    customPenalty += currentDebt * (rate / 100) * (days / 365);
+                    customPenalty += currentDebt * (rateObj.yearRate / 100) * (days / 365);
                 }
-                customComparisons.push({ rate, penalty: customPenalty });
+                customComparisons.push({ label: rateObj.label, penalty: customPenalty });
             }
 
             // Отображаем дополнительные сравнения
             const customResultsHtml = customComparisons.map(c => `
                 <div class="calc-result-item">
-                    <span class="label">При ${c.rate}% годовых</span>
+                    <span class="label">При ${c.label}</span>
                     <span class="value">${c.penalty.toLocaleString('ru-RU', {maximumFractionDigits: 2})} ₽</span>
                 </div>
             `).join('');
