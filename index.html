@@ -3565,7 +3565,7 @@
 
         async function sendFeedbackEmail(type, page, message) {
             try {
-                await fetch('/api/send-email', {
+                await fetch('/api/send_email', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
