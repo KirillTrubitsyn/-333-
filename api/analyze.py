@@ -766,7 +766,7 @@ class handler(BaseHTTPRequestHandler):
             # Формируем информацию об использованных источниках
             sources_used = []
             if court_cases:
-                for case in court_cases[:5]:  # Максимум 5 источников
+                for case in court_cases[:7]:  # Все 7 источников
                     source_info = {
                         "case_number": case.get('case_number', ''),
                         "court_name": case.get('court_name', ''),
