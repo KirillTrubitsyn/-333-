@@ -12,8 +12,8 @@ from collections import defaultdict
 from threading import Lock
 
 # Настройки rate limiting
-RATE_LIMIT = 3  # Максимум запросов
-RATE_WINDOW = 60  # Временное окно в секундах (1 минута)
+RATE_LIMIT = 10  # Максимум запросов в сутки
+RATE_WINDOW = 86400  # Временное окно в секундах (24 часа)
 
 # Хранилище запросов: {ip: [timestamp1, timestamp2, ...]}
 request_history = defaultdict(list)
@@ -99,7 +99,18 @@ def send_rate_limit_error(handler, info: dict):
     add_rate_limit_headers(handler, info)
     handler.end_headers()
 
+    retry_after = info['retry_after']
+    if retry_after > 3600:
+        hours = retry_after // 3600
+        minutes = (retry_after % 3600) // 60
+        time_msg = f"{hours} ч. {minutes} мин." if minutes > 0 else f"{hours} ч."
+    elif retry_after > 60:
+        minutes = retry_after // 60
+        time_msg = f"{minutes} мин."
+    else:
+        time_msg = f"{retry_after} сек."
+
     handler.wfile.write(json.dumps({
-        "error": f"Слишком много запросов. Подождите {info['retry_after']} секунд.",
-        "retry_after": info['retry_after']
+        "error": f"Достигнут лимит запросов ({RATE_LIMIT} в сутки). Попробуйте через {time_msg}",
+        "retry_after": retry_after
     }, ensure_ascii=False).encode('utf-8'))
