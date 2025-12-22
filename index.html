@@ -2836,6 +2836,46 @@
                 );
             }
 
+            // Функция для парсинга текста с курсивом _«текст»_ -> italic TextRun
+            function parseTextWithItalics(text, baseSize = 24, baseColor = null) {
+                const runs = [];
+                // Регулярка для поиска _текст_ (курсив)
+                const italicPattern = /_([^_]+)_/g;
+                let lastIndex = 0;
+                let match;
+
+                while ((match = italicPattern.exec(text)) !== null) {
+                    // Добавляем текст до курсива
+                    if (match.index > lastIndex) {
+                        const beforeText = text.substring(lastIndex, match.index);
+                        const runOptions = { text: beforeText, size: baseSize };
+                        if (baseColor) runOptions.color = baseColor;
+                        runs.push(new TextRun(runOptions));
+                    }
+                    // Добавляем курсивный текст (без подчёркиваний)
+                    const italicRunOptions = { text: match[1], size: baseSize, italics: true, color: "2D5F8B" };
+                    runs.push(new TextRun(italicRunOptions));
+                    lastIndex = match.index + match[0].length;
+                }
+
+                // Добавляем оставшийся текст
+                if (lastIndex < text.length) {
+                    const afterText = text.substring(lastIndex);
+                    const runOptions = { text: afterText, size: baseSize };
+                    if (baseColor) runOptions.color = baseColor;
+                    runs.push(new TextRun(runOptions));
+                }
+
+                // Если нет курсива, возвращаем простой TextRun
+                if (runs.length === 0) {
+                    const runOptions = { text: text, size: baseSize };
+                    if (baseColor) runOptions.color = baseColor;
+                    runs.push(new TextRun(runOptions));
+                }
+
+                return runs;
+            }
+
             let isFirstHeading = true;
             for (const line of filteredLines) {
                 const trimmed = line.trim();
@@ -2868,7 +2908,8 @@
                 } else if (isSubHeading) {
                     children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 160, after: 80 } }));
                 } else {
-                    children.push(new Paragraph({ children: [new TextRun({ text: trimmed, size: 24 })], spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
+                    // Обычный параграф с поддержкой курсива для цитат
+                    children.push(new Paragraph({ children: parseTextWithItalics(trimmed, 24), spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
                 }
             }
             const doc = new Document({
