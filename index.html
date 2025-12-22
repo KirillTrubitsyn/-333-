@@ -548,6 +548,23 @@
             font-size: 12px;
             margin-left: 8px;
         }
+        .sources-badge {
+            display: inline-block;
+            background: #EBF8FF;
+            color: #2B6CB0;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+        .sources-badge:hover {
+            background: #BEE3F8;
+        }
+        .sources-badge.no-sources {
+            background: #FFF5F5;
+            color: #C53030;
+        }
         .action-buttons { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         .action-buttons .btn { flex: 1; min-width: 100px; }
         .error-box {
@@ -943,7 +960,7 @@
                     </div>
 
                     <div id="errorBox" class="error-box"></div>
-                    <div id="outputBadges" style="display: none;"><span id="modelBadge" class="model-badge"></span><span id="timeBadge" class="time-badge"></span></div>
+                    <div id="outputBadges" style="display: none;"><span id="modelBadge" class="model-badge"></span><span id="timeBadge" class="time-badge"></span><span id="sourcesBadge" class="sources-badge" style="display: none;"></span></div>
                     <div id="output" class="output-box output-empty" contenteditable="false">Загрузите документы и нажмите «Сгенерировать»</div>
 
                     <div id="actionButtons" class="action-buttons" style="display: none;">
@@ -2424,6 +2441,10 @@
                     argumentsText = result.arguments_text;
                     actualModel = result.model_used || modelToUse;
 
+                    // Сохраняем информацию об использованных источниках
+                    window.lastSourcesUsed = result.sources_used || [];
+                    window.lastRagStatus = result.rag_status || 'unknown';
+
                     // Сохраняем в кэш
                     await setCachedResult(finalClaimText, finalResponseText, modelToUse, argumentsText, actualModel);
                     setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
@@ -2437,6 +2458,25 @@
                     lastUsedModel = actualModel;
                     document.getElementById('modelBadge').textContent = (cached ? '💾 ' : '') + (MODEL_NAMES[lastUsedModel] || lastUsedModel);
                     document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.` + (cached ? ' (кэш)' : '');
+
+                    // Показываем информацию об источниках из БЗ
+                    const sourcesBadge = document.getElementById('sourcesBadge');
+                    if (!cached && window.lastSourcesUsed && window.lastSourcesUsed.length > 0) {
+                        sourcesBadge.textContent = `📚 ${window.lastSourcesUsed.length} источников`;
+                        sourcesBadge.className = 'sources-badge';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = window.lastSourcesUsed.map(s => s.case_number || s.court_name || 'Документ').join(', ');
+                        sourcesBadge.onclick = () => showSourcesDetails();
+                    } else if (!cached && window.lastRagStatus === 'no_matches') {
+                        sourcesBadge.textContent = '📚 0 источников';
+                        sourcesBadge.className = 'sources-badge no-sources';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = 'Релевантные документы в БЗ не найдены';
+                        sourcesBadge.onclick = null;
+                    } else {
+                        sourcesBadge.style.display = 'none';
+                    }
+
                     outputBadges.style.display = 'block';
                     output.innerHTML = formatOutputHtml(argumentsText);
                     output.classList.remove('output-empty');
@@ -2499,6 +2539,10 @@
                 if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил лимит времени. Попробуйте ещё раз.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
 
+                // Сохраняем информацию об источниках
+                window.lastSourcesUsed = result.sources_used || [];
+                window.lastRagStatus = result.rag_status || 'unknown';
+
                 setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
                 const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
                 setTimeout(() => {
@@ -2507,6 +2551,25 @@
                     lastUsedModel = result.model_used || modelToUse;
                     document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
                     document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.`;
+
+                    // Показываем информацию об источниках
+                    const sourcesBadge = document.getElementById('sourcesBadge');
+                    if (window.lastSourcesUsed && window.lastSourcesUsed.length > 0) {
+                        sourcesBadge.textContent = `📚 ${window.lastSourcesUsed.length} источников`;
+                        sourcesBadge.className = 'sources-badge';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = window.lastSourcesUsed.map(s => s.case_number || s.court_name || 'Документ').join(', ');
+                        sourcesBadge.onclick = () => showSourcesDetails();
+                    } else if (window.lastRagStatus === 'no_matches') {
+                        sourcesBadge.textContent = '📚 0 источников';
+                        sourcesBadge.className = 'sources-badge no-sources';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = 'Релевантные документы в БЗ не найдены';
+                        sourcesBadge.onclick = null;
+                    } else {
+                        sourcesBadge.style.display = 'none';
+                    }
+
                     outputBadges.style.display = 'block';
                     output.innerHTML = formatOutputHtml(result.arguments_text);
                     output.classList.remove('output-empty');
@@ -2592,6 +2655,30 @@
             document.getElementById('comparisonContainer').classList.add('active');
             updateComparisonPreview(1);
             updateComparisonPreview(2);
+        }
+
+        function showSourcesDetails() {
+            if (!window.lastSourcesUsed || window.lastSourcesUsed.length === 0) {
+                alert('Нет информации об использованных источниках');
+                return;
+            }
+            const categoryNames = {
+                'court_decision': 'Судебное решение',
+                'plenum_resolution': 'Постановление Пленума',
+                'practice_review': 'Обзор практики',
+                'scientific_article': 'Научная статья',
+                'ai_review': 'Аналитический обзор'
+            };
+            let details = 'ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ ИЗ БАЗЫ ЗНАНИЙ:\n\n';
+            window.lastSourcesUsed.forEach((source, i) => {
+                const catName = categoryNames[source.category] || source.category;
+                details += `${i + 1}. ${catName}\n`;
+                if (source.case_number) details += `   Номер: ${source.case_number}\n`;
+                if (source.court_name) details += `   Источник: ${source.court_name}\n`;
+                details += `   Релевантность: ${Math.round(source.similarity * 100)}%\n`;
+                details += `   Гибридный скор: ${source.hybrid_score.toFixed(3)}\n\n`;
+            });
+            alert(details);
         }
 
         function toggleEdit() {

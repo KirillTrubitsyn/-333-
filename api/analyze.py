@@ -349,11 +349,11 @@ def search_court_decisions(query_text: str) -> list:
             embed_result = json.loads(response.read().decode('utf-8'))
             query_embedding = embed_result['data'][0]['embedding']
 
-        # Поиск в Supabase (увеличены параметры для лучшего качества)
+        # Поиск в Supabase (понижен порог для лучшего recall)
         search_data = json.dumps({
             "query_embedding": query_embedding,
-            "match_count": 5,
-            "match_threshold": 0.6
+            "match_count": 7,  # Берём больше, потом отфильтруем переранжированием
+            "match_threshold": 0.4  # Понижен с 0.6 для лучшего recall
         }).encode('utf-8')
 
         search_req = urllib.request.Request(
@@ -727,14 +727,24 @@ class handler(BaseHTTPRequestHandler):
 
             # Поиск похожих судебных решений в базе знаний (RAG)
             court_cases = []
+            rag_status = "not_attempted"
+            rag_error = None
             try:
                 search_query = claim_text[:5000]  # Используем начало иска для поиска
                 # Query Expansion: расширяем запрос юридическими синонимами
                 expanded_query = expand_query(search_query)
                 court_cases = search_court_decisions(expanded_query)
                 # Гибридное переранжирование: vector + keyword + temporal + outcome
-                court_cases = hybrid_rerank(court_cases, search_query)
+                if court_cases:
+                    court_cases = hybrid_rerank(court_cases, search_query)
+                    rag_status = "success"
+                    print(f"RAG: found {len(court_cases)} documents")
+                else:
+                    rag_status = "no_matches"
+                    print("RAG: no matching documents found")
             except Exception as e:
+                rag_status = "error"
+                rag_error = str(e)[:100]
                 print(f"RAG search failed: {e}")  # Продолжаем без RAG если поиск не удался
 
             system_prompt = build_system_prompt(rates_info, court_cases)
@@ -753,6 +763,19 @@ class handler(BaseHTTPRequestHandler):
             else:
                 arguments_text = call_gemini(system_prompt, user_prompt)
 
+            # Формируем информацию об использованных источниках
+            sources_used = []
+            if court_cases:
+                for case in court_cases[:5]:  # Максимум 5 источников
+                    source_info = {
+                        "case_number": case.get('case_number', ''),
+                        "court_name": case.get('court_name', ''),
+                        "category": case.get('category', 'court_decision'),
+                        "similarity": round(case.get('similarity', 0), 3),
+                        "hybrid_score": round(case.get('hybrid_score', 0), 3)
+                    }
+                    sources_used.append(source_info)
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -760,7 +783,11 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "arguments_text": arguments_text,
-                "model_used": model
+                "model_used": model,
+                "sources_used": sources_used,
+                "sources_count": len(sources_used),
+                "rag_status": rag_status,
+                "rag_error": rag_error
             }).encode())
 
         except Exception as e:
