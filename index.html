@@ -2776,7 +2776,23 @@
         async function downloadDocx() {
             const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Footer, PageNumber } = docx;
             const text = lastResult || document.getElementById('output').innerText;
+
+            // Исключаем раздел "ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ" из экспорта
+            const sourcesHeaderPattern = /^5\.\s*(ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ|ИСТОЧНИКИ)/i;
+            let filteredText = text;
             const lines = text.split('\n');
+            let cutIndex = -1;
+            for (let i = 0; i < lines.length; i++) {
+                if (sourcesHeaderPattern.test(lines[i].trim())) {
+                    cutIndex = i;
+                    break;
+                }
+            }
+            if (cutIndex !== -1) {
+                filteredText = lines.slice(0, cutIndex).join('\n');
+            }
+
+            const filteredLines = filteredText.split('\n');
             const children = [];
 
             // Загружаем лого
@@ -2821,7 +2837,7 @@
             }
 
             let isFirstHeading = true;
-            for (const line of lines) {
+            for (const line of filteredLines) {
                 const trimmed = line.trim();
                 if (!trimmed) continue; // Пропускаем пустые строки
 
