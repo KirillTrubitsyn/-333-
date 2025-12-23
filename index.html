@@ -2852,8 +2852,8 @@
                     // Добавляем цитату с форматированием
                     const quoteText = match[1] || match[2]; // match[1] для «...», match[2] для обычного курсива
                     if (match[1]) {
-                        // Цитата в кавычках - добавляем кавычки обратно
-                        runs.push(new TextRun({ text: '«' + quoteText + '»', italics: true, color: "2D5F8B", size: 24 }));
+                        // Цитата в кавычках - добавляем кавычки обратно, курсив без смены цвета
+                        runs.push(new TextRun({ text: '«' + quoteText + '»', italics: true, size: 24 }));
                     } else {
                         // Обычный курсив
                         runs.push(new TextRun({ text: quoteText, italics: true, size: 24 }));
@@ -2865,6 +2865,11 @@
                     runs.push(new TextRun({ text: text.slice(lastIndex), size: 24 }));
                 }
                 return runs.length > 0 ? runs : [new TextRun({ text: text, size: 24 })];
+            }
+
+            // Проверяем, является ли строка полностью цитатой (начинается с _« и заканчивается »_)
+            function isFullQuoteLine(text) {
+                return /^_«[^»]+»_$/.test(text.trim());
             }
 
             let isFirstHeading = true;
@@ -2930,7 +2935,17 @@
                 } else {
                     // Обычный параграф - проверяем на наличие цитат
                     const textRuns = parseTextWithQuotes(trimmed);
-                    children.push(new Paragraph({ children: textRuns, spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
+                    // Если строка полностью является цитатой - добавляем отступ слева
+                    if (isFullQuoteLine(trimmed)) {
+                        children.push(new Paragraph({
+                            children: textRuns,
+                            spacing: { after: 60, before: 60 },
+                            alignment: AlignmentType.JUSTIFIED,
+                            indent: { left: 720 } // Отступ 0.5 дюйма (720 twips)
+                        }));
+                    } else {
+                        children.push(new Paragraph({ children: textRuns, spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
+                    }
                 }
             }
 
