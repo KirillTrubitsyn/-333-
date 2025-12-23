@@ -51,10 +51,15 @@
             align-items: center;
             gap: 20px;
         }
+        /* seasonal: wrapper added for New Year theme, removable */
+        .header-logo-wrapper {
+            position: relative;
+            flex-shrink: 0;
+        }
         .header-logo {
             width: 60px;
             height: 60px;
-            flex-shrink: 0;
+            display: block;
         }
         .header-text {
             flex: 1;
@@ -527,6 +532,14 @@
             margin-bottom: 12px;
             text-align: justify;
         }
+        .output-box .legal-quote {
+            font-style: italic;
+            color: #2D5F8B;
+            background: #F0F7FC;
+            padding: 2px 4px;
+            border-radius: 3px;
+            border-left: 2px solid #C9A227;
+        }
         .output-empty { color: #A0AEC0; font-style: italic; text-align: center; padding-top: 80px; }
         .output-editable:focus { outline: 2px solid #C9A227; }
         .model-badge {
@@ -547,6 +560,23 @@
             border-radius: 12px;
             font-size: 12px;
             margin-left: 8px;
+        }
+        .sources-badge {
+            display: inline-block;
+            background: #EBF8FF;
+            color: #2B6CB0;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            margin-left: 8px;
+            cursor: pointer;
+        }
+        .sources-badge:hover {
+            background: #BEE3F8;
+        }
+        .sources-badge.no-sources {
+            background: #FFF5F5;
+            color: #C53030;
         }
         .action-buttons { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         .action-buttons .btn { flex: 1; min-width: 100px; }
@@ -744,6 +774,9 @@
         .admin-only { display: block; }
         body.tester-mode .admin-only { display: none !important; }
     </style>
+
+    <!-- seasonal: New Year theme, removable -->
+    <link rel="stylesheet" href="/new-year-theme.css" id="newYearThemeCSS">
 </head>
 <body>
     <!-- Access Control Overlay -->
@@ -788,7 +821,10 @@
     <div class="container">
         <div class="header">
             <div class="header-content">
-                <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
+                <!-- seasonal: wrapper for New Year snow effect, removable -->
+                <div class="header-logo-wrapper">
+                    <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
+                </div>
                 <div class="header-text">
                     <div class="header-title">
                         <span class="anti">Anti</span><span class="num">333</span><span class="ai">.AI</span>
@@ -943,7 +979,7 @@
                     </div>
 
                     <div id="errorBox" class="error-box"></div>
-                    <div id="outputBadges" style="display: none;"><span id="modelBadge" class="model-badge"></span><span id="timeBadge" class="time-badge"></span></div>
+                    <div id="outputBadges" style="display: none;"><span id="modelBadge" class="model-badge"></span><span id="timeBadge" class="time-badge"></span><span id="sourcesBadge" class="sources-badge" style="display: none;"></span></div>
                     <div id="output" class="output-box output-empty" contenteditable="false">Загрузите документы и нажмите «Сгенерировать»</div>
 
                     <div id="actionButtons" class="action-buttons" style="display: none;">
@@ -1366,6 +1402,41 @@
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        /**
+         * seasonal: New Year theme, removable
+         * Feature flag for New Year seasonal visuals
+         * Auto-disable: Set to false after January 15th
+         */
+        const NEW_YEAR_THEME = (() => {
+            // Check localStorage override first
+            const stored = localStorage.getItem('NEW_YEAR_THEME');
+            if (stored !== null) return stored === 'true';
+
+            // Auto-enable during holiday season (Dec 15 - Jan 15)
+            const now = new Date();
+            const month = now.getMonth(); // 0-11
+            const day = now.getDate();
+            return (month === 11 && day >= 15) || (month === 0 && day <= 15);
+        })();
+
+        // Apply theme class based on feature flag
+        // seasonal: New Year, removable
+        if (NEW_YEAR_THEME) {
+            document.documentElement.classList.add('theme-new-year');
+        }
+
+        // Public API for theme control (for testing/debugging)
+        // seasonal: New Year, removable
+        window.setNewYearTheme = function(enabled) {
+            localStorage.setItem('NEW_YEAR_THEME', enabled ? 'true' : 'false');
+            if (enabled) {
+                document.documentElement.classList.add('theme-new-year');
+            } else {
+                document.documentElement.classList.remove('theme-new-year');
+            }
+            console.log('New Year theme:', enabled ? 'enabled' : 'disabled');
+        };
 
         const MAX_FILES = 3, MAX_FILE_SIZE = 10 * 1024 * 1024;
         const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-opus-4-5-20251101': 'Claude Opus 4.5', 'gpt-5.2': 'ChatGPT 5.2'};
@@ -2424,6 +2495,10 @@
                     argumentsText = result.arguments_text;
                     actualModel = result.model_used || modelToUse;
 
+                    // Сохраняем информацию об использованных источниках
+                    window.lastSourcesUsed = result.sources_used || [];
+                    window.lastRagStatus = result.rag_status || 'unknown';
+
                     // Сохраняем в кэш
                     await setCachedResult(finalClaimText, finalResponseText, modelToUse, argumentsText, actualModel);
                     setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
@@ -2437,6 +2512,25 @@
                     lastUsedModel = actualModel;
                     document.getElementById('modelBadge').textContent = (cached ? '💾 ' : '') + (MODEL_NAMES[lastUsedModel] || lastUsedModel);
                     document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.` + (cached ? ' (кэш)' : '');
+
+                    // Показываем информацию об источниках из БЗ
+                    const sourcesBadge = document.getElementById('sourcesBadge');
+                    if (!cached && window.lastSourcesUsed && window.lastSourcesUsed.length > 0) {
+                        sourcesBadge.textContent = `📚 ${window.lastSourcesUsed.length} источников`;
+                        sourcesBadge.className = 'sources-badge';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = window.lastSourcesUsed.map(s => s.case_number || s.court_name || 'Документ').join(', ');
+                        sourcesBadge.onclick = () => showSourcesDetails();
+                    } else if (!cached && window.lastRagStatus === 'no_matches') {
+                        sourcesBadge.textContent = '📚 0 источников';
+                        sourcesBadge.className = 'sources-badge no-sources';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = 'Релевантные документы в БЗ не найдены';
+                        sourcesBadge.onclick = null;
+                    } else {
+                        sourcesBadge.style.display = 'none';
+                    }
+
                     outputBadges.style.display = 'block';
                     output.innerHTML = formatOutputHtml(argumentsText);
                     output.classList.remove('output-empty');
@@ -2499,6 +2593,10 @@
                 if (!response.ok) { const errText = await response.text(); if (errText.includes('TIMEOUT') || errText.includes('timeout')) throw new Error('⏱️ Запрос превысил лимит времени. Попробуйте ещё раз.'); try { const err = JSON.parse(errText); throw new Error(err.error || 'Ошибка сервера'); } catch(e) { if (e.message.includes('Ошибка') || e.message.includes('⏱️')) throw e; throw new Error(errText.substring(0, 200) || 'Ошибка сервера'); } }
                 const result = await response.json();
 
+                // Сохраняем информацию об источниках
+                window.lastSourcesUsed = result.sources_used || [];
+                window.lastRagStatus = result.rag_status || 'unknown';
+
                 setProgress(4, 100, 'Готово!', 'Успешно', { showDetails: false });
                 const generationTime = ((Date.now() - generationStartTime) / 1000).toFixed(1);
                 setTimeout(() => {
@@ -2507,6 +2605,25 @@
                     lastUsedModel = result.model_used || modelToUse;
                     document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
                     document.getElementById('timeBadge').textContent = `⏱️ ${generationTime} сек.`;
+
+                    // Показываем информацию об источниках
+                    const sourcesBadge = document.getElementById('sourcesBadge');
+                    if (window.lastSourcesUsed && window.lastSourcesUsed.length > 0) {
+                        sourcesBadge.textContent = `📚 ${window.lastSourcesUsed.length} источников`;
+                        sourcesBadge.className = 'sources-badge';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = window.lastSourcesUsed.map(s => s.case_number || s.court_name || 'Документ').join(', ');
+                        sourcesBadge.onclick = () => showSourcesDetails();
+                    } else if (window.lastRagStatus === 'no_matches') {
+                        sourcesBadge.textContent = '📚 0 источников';
+                        sourcesBadge.className = 'sources-badge no-sources';
+                        sourcesBadge.style.display = 'inline-block';
+                        sourcesBadge.title = 'Релевантные документы в БЗ не найдены';
+                        sourcesBadge.onclick = null;
+                    } else {
+                        sourcesBadge.style.display = 'none';
+                    }
+
                     outputBadges.style.display = 'block';
                     output.innerHTML = formatOutputHtml(result.arguments_text);
                     output.classList.remove('output-empty');
@@ -2594,6 +2711,30 @@
             updateComparisonPreview(2);
         }
 
+        function showSourcesDetails() {
+            if (!window.lastSourcesUsed || window.lastSourcesUsed.length === 0) {
+                alert('Нет информации об использованных источниках');
+                return;
+            }
+            const categoryNames = {
+                'court_decision': 'Судебное решение',
+                'plenum_resolution': 'Постановление Пленума',
+                'practice_review': 'Обзор практики',
+                'scientific_article': 'Научная статья',
+                'ai_review': 'Аналитический обзор'
+            };
+            let details = 'ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ ИЗ БАЗЫ ЗНАНИЙ:\n\n';
+            window.lastSourcesUsed.forEach((source, i) => {
+                const catName = categoryNames[source.category] || source.category;
+                details += `${i + 1}. ${catName}\n`;
+                if (source.case_number) details += `   Номер: ${source.case_number}\n`;
+                if (source.court_name) details += `   Источник: ${source.court_name}\n`;
+                details += `   Релевантность: ${Math.round(source.similarity * 100)}%\n`;
+                details += `   Гибридный скор: ${source.hybrid_score.toFixed(3)}\n\n`;
+            });
+            alert(details);
+        }
+
         function toggleEdit() {
             const output = document.getElementById('output');
             isEditing = !isEditing;
@@ -2625,6 +2766,12 @@
             let subtitleLines = [];
             let collectingSubtitle = false;
 
+            // Функция для форматирования курсива _текст_ -> <em>текст</em>
+            function formatItalics(str) {
+                return str.replace(/_«([^»]+)»_/g, '<em class="legal-quote">«$1»</em>')
+                          .replace(/_([^_]+)_/g, '<em>$1</em>');
+            }
+
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i].trim();
                 if (!line) {
@@ -2636,6 +2783,7 @@
                     continue;
                 }
 
+                const formattedLine = formatItalics(line);
                 const isDocTitle = isFirstHeading && /^[А-ЯЁA-Z\s]+$/.test(line) && line.length > 5;
                 const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(line);
                 const isSubHeading = /^\d+\.\d+\.?\s+/.test(line);
@@ -2643,10 +2791,10 @@
                 if (isDocTitle) {
                     isFirstHeading = false;
                     collectingSubtitle = true;
-                    html += `<div class="doc-title">${line}</div>`;
+                    html += `<div class="doc-title">${formattedLine}</div>`;
                     html += `<div class="doc-title-line">━━━━━━━━━━━━━━━━━━━━</div>`;
                 } else if (collectingSubtitle && !isMainHeading) {
-                    subtitleLines.push(line);
+                    subtitleLines.push(formattedLine);
                 } else if (isMainHeading) {
                     if (subtitleLines.length > 0) {
                         html += `<div class="doc-subtitle">${subtitleLines.join('<br>')}</div>`;
@@ -2654,11 +2802,11 @@
                     }
                     collectingSubtitle = false;
                     isFirstHeading = false;
-                    html += `<div class="section-heading">${line}</div>`;
+                    html += `<div class="section-heading">${formattedLine}</div>`;
                 } else if (isSubHeading) {
-                    html += `<div class="subsection-heading">${line}</div>`;
+                    html += `<div class="subsection-heading">${formattedLine}</div>`;
                 } else {
-                    html += `<div class="paragraph">${line}</div>`;
+                    html += `<div class="paragraph">${formattedLine}</div>`;
                 }
             }
 
@@ -2674,7 +2822,23 @@
         async function downloadDocx() {
             const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Footer, PageNumber } = docx;
             const text = lastResult || document.getElementById('output').innerText;
+
+            // Исключаем раздел "ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ" из экспорта
+            const sourcesHeaderPattern = /^5\.\s*(ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ|ИСТОЧНИКИ)/i;
+            let filteredText = text;
             const lines = text.split('\n');
+            let cutIndex = -1;
+            for (let i = 0; i < lines.length; i++) {
+                if (sourcesHeaderPattern.test(lines[i].trim())) {
+                    cutIndex = i;
+                    break;
+                }
+            }
+            if (cutIndex !== -1) {
+                filteredText = lines.slice(0, cutIndex).join('\n');
+            }
+
+            const filteredLines = filteredText.split('\n');
             const children = [];
 
             // Загружаем лого
@@ -2719,7 +2883,7 @@
             }
 
             let isFirstHeading = true;
-            for (const line of lines) {
+            for (const line of filteredLines) {
                 const trimmed = line.trim();
                 if (!trimmed) continue; // Пропускаем пустые строки
 

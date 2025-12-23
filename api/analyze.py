@@ -349,11 +349,11 @@ def search_court_decisions(query_text: str) -> list:
             embed_result = json.loads(response.read().decode('utf-8'))
             query_embedding = embed_result['data'][0]['embedding']
 
-        # Поиск в Supabase (увеличены параметры для лучшего качества)
+        # Поиск в Supabase (понижен порог для лучшего recall)
         search_data = json.dumps({
             "query_embedding": query_embedding,
-            "match_count": 5,
-            "match_threshold": 0.6
+            "match_count": 7,  # Берём больше, потом отфильтруем переранжированием
+            "match_threshold": 0.4  # Понижен с 0.6 для лучшего recall
         }).encode('utf-8')
 
         search_req = urllib.request.Request(
@@ -473,6 +473,10 @@ def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
 4. ЗАКЛЮЧЕНИЕ
    Краткий вывод: оснований для применения ст. 333 ГК РФ не имеется.
 
+5. ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ
+   Перечисли все источники из базы знаний, на которые ты ссылался в тексте.
+   Формат: номер дела или название документа, суд/орган, дата.
+
 ОБЯЗАТЕЛЬНО ИСПОЛЬЗУЙ ДАННЫЕ ИЗ ДОКУМЕНТОВ:
 - Наименования сторон (ООО, АО, ИП — как в документах)
 - Номер и дату договора
@@ -481,15 +485,33 @@ def build_system_prompt(rates_info: str, court_cases: list = None) -> str:
 - Процентную ставку неустойки по договору
 - Доводы ответчика (если есть отзыв) — каждый довод разбери отдельно
 
+ПРАВИЛА ЦИТИРОВАНИЯ СУДЕБНОЙ ПРАКТИКИ:
+- При ссылке на судебное решение или постановление из базы знаний ОБЯЗАТЕЛЬНО приводи краткую цитату
+- Цитаты оформляй курсивом: _«текст цитаты»_
+- ВАЖНО: Цитата должна начинаться С НОВОГО АБЗАЦА (новой строки)
+- Формат цитирования:
+  [Твой текст со ссылкой на дело]
+
+  _«Цитата из решения суда»_
+
+  [Продолжение твоего текста]
+- Пример:
+  Арбитражный суд в деле А40-12345/2024 подтвердил данную позицию:
+
+  _«Неустойка в размере 0,1% в день является обычно применяемой в деловом обороте и не может быть признана чрезмерной»_
+
+- Цитируй ключевые выводы суда, подтверждающие твою позицию
+
 АКТУАЛЬНЫЕ СТАВКИ ЦБ РФ:
 {rates_info}
 {court_practice}
 ФОРМАТ ВЫВОДА:
-- Чистый текст без markdown (без **, ##, *)
+- Текст без markdown, КРОМЕ курсива для цитат (используй _текст_ для курсива)
 - Нумерация разделов арабскими цифрами с точкой
 - Абзацы разделены пустой строкой
 - Профессиональный юридический язык
-- Если есть релевантная судебная практика — ссылайся на неё в аргументации"""
+- Обязательно ссылайся на релевантную судебную практику с цитатами
+- В конце обязательно добавь раздел "5. ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ" со списком всех использованных документов из базы знаний"""
 
 
 def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comments: str) -> str:
@@ -527,8 +549,16 @@ def build_user_prompt(claim_text: str, response_text: str, other_docs: str, comm
 
 
 def clean_markdown(text: str) -> str:
-    """Убираем markdown из текста"""
-    return text.replace('**', '').replace('##', '').replace('###', '').replace('*', '')
+    """Убираем markdown из текста, сохраняя курсив (_текст_)"""
+    # Убираем жирный текст и заголовки, но оставляем курсив (подчёркивания)
+    text = text.replace('**', '')
+    text = text.replace('###', '')
+    text = text.replace('##', '')
+    # Убираем одиночные * но не трогаем _
+    # Заменяем *текст* на _текст_ для единообразия курсива
+    import re
+    text = re.sub(r'\*([^*]+)\*', r'_\1_', text)
+    return text
 
 
 def call_gemini(system_prompt: str, user_prompt: str) -> str:
@@ -727,14 +757,24 @@ class handler(BaseHTTPRequestHandler):
 
             # Поиск похожих судебных решений в базе знаний (RAG)
             court_cases = []
+            rag_status = "not_attempted"
+            rag_error = None
             try:
                 search_query = claim_text[:5000]  # Используем начало иска для поиска
                 # Query Expansion: расширяем запрос юридическими синонимами
                 expanded_query = expand_query(search_query)
                 court_cases = search_court_decisions(expanded_query)
                 # Гибридное переранжирование: vector + keyword + temporal + outcome
-                court_cases = hybrid_rerank(court_cases, search_query)
+                if court_cases:
+                    court_cases = hybrid_rerank(court_cases, search_query)
+                    rag_status = "success"
+                    print(f"RAG: found {len(court_cases)} documents")
+                else:
+                    rag_status = "no_matches"
+                    print("RAG: no matching documents found")
             except Exception as e:
+                rag_status = "error"
+                rag_error = str(e)[:100]
                 print(f"RAG search failed: {e}")  # Продолжаем без RAG если поиск не удался
 
             system_prompt = build_system_prompt(rates_info, court_cases)
@@ -753,6 +793,19 @@ class handler(BaseHTTPRequestHandler):
             else:
                 arguments_text = call_gemini(system_prompt, user_prompt)
 
+            # Формируем информацию об использованных источниках
+            sources_used = []
+            if court_cases:
+                for case in court_cases[:7]:  # Все 7 источников
+                    source_info = {
+                        "case_number": case.get('case_number', ''),
+                        "court_name": case.get('court_name', ''),
+                        "category": case.get('category', 'court_decision'),
+                        "similarity": round(case.get('similarity', 0), 3),
+                        "hybrid_score": round(case.get('hybrid_score', 0), 3)
+                    }
+                    sources_used.append(source_info)
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
@@ -760,7 +813,11 @@ class handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(json.dumps({
                 "arguments_text": arguments_text,
-                "model_used": model
+                "model_used": model,
+                "sources_used": sources_used,
+                "sources_count": len(sources_used),
+                "rag_status": rag_status,
+                "rag_error": rag_error
             }).encode())
 
         except Exception as e:
