@@ -51,15 +51,10 @@
             align-items: center;
             gap: 20px;
         }
-        /* seasonal: wrapper added for New Year theme, removable */
-        .header-logo-wrapper {
-            position: relative;
-            flex-shrink: 0;
-        }
         .header-logo {
             width: 60px;
             height: 60px;
-            display: block;
+            flex-shrink: 0;
         }
         .header-text {
             flex: 1;
@@ -774,9 +769,6 @@
         .admin-only { display: block; }
         body.tester-mode .admin-only { display: none !important; }
     </style>
-
-    <!-- seasonal: New Year theme, removable -->
-    <link rel="stylesheet" href="/new-year-theme.css" id="newYearThemeCSS">
 </head>
 <body>
     <!-- Access Control Overlay -->
@@ -821,10 +813,7 @@
     <div class="container">
         <div class="header">
             <div class="header-content">
-                <!-- seasonal: wrapper for New Year snow effect, removable -->
-                <div class="header-logo-wrapper">
-                    <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
-                </div>
+                <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
                 <div class="header-text">
                     <div class="header-title">
                         <span class="anti">Anti</span><span class="num">333</span><span class="ai">.AI</span>
@@ -1402,41 +1391,6 @@
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-        /**
-         * seasonal: New Year theme, removable
-         * Feature flag for New Year seasonal visuals
-         * Auto-disable: Set to false after January 15th
-         */
-        const NEW_YEAR_THEME = (() => {
-            // Check localStorage override first
-            const stored = localStorage.getItem('NEW_YEAR_THEME');
-            if (stored !== null) return stored === 'true';
-
-            // Auto-enable during holiday season (Dec 15 - Jan 15)
-            const now = new Date();
-            const month = now.getMonth(); // 0-11
-            const day = now.getDate();
-            return (month === 11 && day >= 15) || (month === 0 && day <= 15);
-        })();
-
-        // Apply theme class based on feature flag
-        // seasonal: New Year, removable
-        if (NEW_YEAR_THEME) {
-            document.documentElement.classList.add('theme-new-year');
-        }
-
-        // Public API for theme control (for testing/debugging)
-        // seasonal: New Year, removable
-        window.setNewYearTheme = function(enabled) {
-            localStorage.setItem('NEW_YEAR_THEME', enabled ? 'true' : 'false');
-            if (enabled) {
-                document.documentElement.classList.add('theme-new-year');
-            } else {
-                document.documentElement.classList.remove('theme-new-year');
-            }
-            console.log('New Year theme:', enabled ? 'enabled' : 'disabled');
-        };
 
         const MAX_FILES = 3, MAX_FILE_SIZE = 10 * 1024 * 1024;
         const MODEL_NAMES = {'gemini-3-pro-preview': 'Gemini 3 Pro', 'claude-opus-4-5-20251101': 'Claude Opus 4.5', 'gpt-5.2': 'ChatGPT 5.2'};
