@@ -1559,15 +1559,30 @@
             }
         }
 
-        function clearAllCache() {
+        async function clearAllCache() {
             const keys = Object.keys(localStorage).filter(k => k.startsWith('gen_cache_'));
             const count = keys.length;
-            keys.forEach(k => localStorage.removeItem(k));
-            if (count > 0) {
-                alert(`Кэш очищен! Удалено записей: ${count}`);
-            } else {
-                alert('Кэш уже пуст');
+
+            if (count === 0) {
+                showToast('Кэш уже пуст');
+                return;
             }
+
+            // Удаляем записи асинхронно, чтобы не блокировать UI
+            await new Promise(resolve => setTimeout(resolve, 0));
+            for (const k of keys) {
+                localStorage.removeItem(k);
+            }
+
+            showToast(`Кэш очищен! Удалено записей: ${count}`);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1a2744; color: white; padding: 12px 24px; border-radius: 8px; z-index: 9999; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
         // === База знаний (Knowledge Base) ===
