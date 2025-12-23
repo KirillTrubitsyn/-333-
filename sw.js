@@ -1,4 +1,4 @@
-const CACHE_NAME = 'anti333-cache-v4';
+const CACHE_NAME = 'anti333-cache-v5';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -8,7 +8,8 @@ const STATIC_ASSETS = [
   '/apple-touch-icon.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/toplist333.png'
+  '/toplist333.png',
+  '/new-year-theme.css' // seasonal: New Year, removable
 ];
 
 const EXTERNAL_ASSETS = [
