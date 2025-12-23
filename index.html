@@ -2901,11 +2901,31 @@
             let isFirstHeading = true;
             let collectingSubtitle = false;
             let subtitleLines = [];
+            let quoteLines = []; // Для сбора последовательных строк цитат
+
+            // Функция для добавления накопленных цитат как один блок
+            function flushQuotes() {
+                if (quoteLines.length > 0) {
+                    const quoteText = quoteLines.join(' ');
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: quoteText, italics: true, color: "1a2744", size: 24 })],
+                        spacing: { after: 120, before: 120 },
+                        alignment: AlignmentType.JUSTIFIED,
+                        indent: { left: 720 },
+                        border: {
+                            left: { style: BorderStyle.SINGLE, size: 24, color: "C9A227", space: 10 }
+                        }
+                    }));
+                    quoteLines = [];
+                }
+            }
 
             for (const line of filteredLines) {
                 const trimmed = line.trim();
                 if (!trimmed) {
-                    // При пустой строке, если собирали подзаголовок - добавляем его
+                    // При пустой строке - сбрасываем накопленные цитаты
+                    flushQuotes();
+                    // Если собирали подзаголовок - добавляем его
                     if (collectingSubtitle && subtitleLines.length > 0) {
                         children.push(new Paragraph({
                             children: [new TextRun({ text: subtitleLines.join(' '), size: 24, color: "1a2744" })],
@@ -2918,10 +2938,18 @@
                     continue;
                 }
 
+                // Проверяем, является ли строка цитатой (начинается с «)
+                const isQuoteLine = trimmed.startsWith('«') || trimmed.startsWith('_«');
+
                 // Главный заголовок документа (первая строка в верхнем регистре)
                 const isDocTitle = isFirstHeading && /^[А-ЯЁA-Z\s]+$/.test(trimmed) && trimmed.length > 5;
                 const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
                 const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
+
+                // Если это не цитата - сбрасываем накопленные цитаты
+                if (!isQuoteLine) {
+                    flushQuotes();
+                }
 
                 if (isDocTitle) {
                     isFirstHeading = false;
@@ -2958,26 +2986,18 @@
                     children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a2744" })], spacing: { before: 100, after: 100 } }));
                 } else if (isSubHeading) {
                     children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 160, after: 80 } }));
+                } else if (isQuoteLine) {
+                    // Накапливаем строки цитат
+                    let quoteText = trimmed.replace(/^_«/, '«').replace(/»_$/, '»');
+                    quoteLines.push(quoteText);
                 } else {
-                    // Обычный параграф - проверяем на наличие цитат
-                    // Если строка полностью является цитатой - добавляем отступ и золотую линию слева
-                    if (isFullQuoteLine(trimmed)) {
-                        const textRuns = parseTextWithQuotes(trimmed, true); // true = цитата, тёмно-синий цвет
-                        children.push(new Paragraph({
-                            children: textRuns,
-                            spacing: { after: 90, before: 90 }, // Отступы на 50% больше
-                            alignment: AlignmentType.JUSTIFIED,
-                            indent: { left: 720 }, // Отступ 0.5 дюйма (720 twips)
-                            border: {
-                                left: { style: BorderStyle.SINGLE, size: 24, color: "C9A227" } // Золотая линия слева
-                            }
-                        }));
-                    } else {
-                        const textRuns = parseTextWithQuotes(trimmed);
-                        children.push(new Paragraph({ children: textRuns, spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
-                    }
+                    const textRuns = parseTextWithQuotes(trimmed);
+                    children.push(new Paragraph({ children: textRuns, spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
                 }
             }
+
+            // Сбрасываем оставшиеся цитаты
+            flushQuotes();
 
             // Если остались несохраненные строки подзаголовка
             if (subtitleLines.length > 0) {
