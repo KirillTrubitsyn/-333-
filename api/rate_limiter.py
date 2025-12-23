@@ -12,7 +12,7 @@ from collections import defaultdict
 from threading import Lock
 
 # Настройки rate limiting
-RATE_LIMIT = 3  # Максимум запросов
+RATE_LIMIT = 20  # Максимум запросов
 RATE_WINDOW = 60  # Временное окно в секундах (1 минута)
 
 # Хранилище запросов: {ip: [timestamp1, timestamp2, ...]}
