@@ -2789,7 +2789,7 @@
         function copyToClipboard() { navigator.clipboard.writeText(lastResult || document.getElementById('output').innerText).then(() => alert('Скопировано!')); }
 
         async function downloadDocx() {
-            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Footer, PageNumber } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Footer, PageNumber, BorderStyle } = docx;
             const text = lastResult || document.getElementById('output').innerText;
 
             // Исключаем раздел "ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ" из экспорта
@@ -2852,32 +2852,38 @@
             }
 
             // Функция для парсинга текста с цитатами _«...»_ и обычным курсивом _..._
-            function parseTextWithQuotes(text) {
+            function parseTextWithQuotes(text, isQuoteParagraph = false) {
                 const runs = [];
                 // Регулярка для поиска цитат _«...»_ и курсива _..._
                 const pattern = /_«([^»]+)»_|_([^_]+)_/g;
                 let lastIndex = 0;
                 let match;
+                // Тёмно-синий цвет для цитат
+                const quoteColor = "1a2744";
 
                 while ((match = pattern.exec(text)) !== null) {
                     // Добавляем текст до цитаты
                     if (match.index > lastIndex) {
-                        runs.push(new TextRun({ text: text.slice(lastIndex, match.index), size: 24 }));
+                        const textOpts = { text: text.slice(lastIndex, match.index), size: 24 };
+                        if (isQuoteParagraph) textOpts.color = quoteColor;
+                        runs.push(new TextRun(textOpts));
                     }
                     // Добавляем цитату с форматированием
                     const quoteText = match[1] || match[2]; // match[1] для «...», match[2] для обычного курсива
                     if (match[1]) {
-                        // Цитата в кавычках - добавляем кавычки обратно, курсив без смены цвета
-                        runs.push(new TextRun({ text: '«' + quoteText + '»', italics: true, size: 24 }));
+                        // Цитата в кавычках - тёмно-синий цвет, курсив
+                        runs.push(new TextRun({ text: '«' + quoteText + '»', italics: true, color: quoteColor, size: 24 }));
                     } else {
                         // Обычный курсив
-                        runs.push(new TextRun({ text: quoteText, italics: true, size: 24 }));
+                        runs.push(new TextRun({ text: quoteText, italics: true, color: quoteColor, size: 24 }));
                     }
                     lastIndex = pattern.lastIndex;
                 }
                 // Добавляем оставшийся текст
                 if (lastIndex < text.length) {
-                    runs.push(new TextRun({ text: text.slice(lastIndex), size: 24 }));
+                    const textOpts = { text: text.slice(lastIndex), size: 24 };
+                    if (isQuoteParagraph) textOpts.color = quoteColor;
+                    runs.push(new TextRun(textOpts));
                 }
                 return runs.length > 0 ? runs : [new TextRun({ text: text, size: 24 })];
             }
@@ -2949,16 +2955,20 @@
                     children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 160, after: 80 } }));
                 } else {
                     // Обычный параграф - проверяем на наличие цитат
-                    const textRuns = parseTextWithQuotes(trimmed);
-                    // Если строка полностью является цитатой - добавляем отступ слева
+                    // Если строка полностью является цитатой - добавляем отступ и золотую линию слева
                     if (isFullQuoteLine(trimmed)) {
+                        const textRuns = parseTextWithQuotes(trimmed, true); // true = цитата, тёмно-синий цвет
                         children.push(new Paragraph({
                             children: textRuns,
-                            spacing: { after: 60, before: 60 },
+                            spacing: { after: 90, before: 90 }, // Отступы на 50% больше
                             alignment: AlignmentType.JUSTIFIED,
-                            indent: { left: 720 } // Отступ 0.5 дюйма (720 twips)
+                            indent: { left: 720 }, // Отступ 0.5 дюйма (720 twips)
+                            border: {
+                                left: { style: BorderStyle.SINGLE, size: 24, color: "C9A227" } // Золотая линия слева
+                            }
                         }));
                     } else {
+                        const textRuns = parseTextWithQuotes(trimmed);
                         children.push(new Paragraph({ children: textRuns, spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
                     }
                 }
