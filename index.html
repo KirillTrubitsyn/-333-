@@ -38,6 +38,23 @@
             position: relative;
             overflow: hidden;
         }
+        /* Новогодние снежинки */
+        .snowflake {
+            position: absolute;
+            top: -20px;
+            color: #fff;
+            font-size: 14px;
+            text-shadow: 0 0 5px rgba(255,255,255,0.7);
+            pointer-events: none;
+            z-index: 1;
+            animation: snowfall linear infinite;
+            opacity: 0.8;
+        }
+        @keyframes snowfall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            100% { transform: translateY(130px) rotate(360deg); opacity: 0; }
+        }
         .header::after {
             content: '';
             position: absolute;
@@ -1389,8 +1406,6 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- Новогодние снежинки -->
-    <script src="https://unpkg.com/magic-snowflakes/dist/snowflakes.min.js"></script>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -2039,19 +2054,24 @@
             document.getElementById('calcEndDate').value = today;
             document.getElementById('calcEndDatePeriods').value = today;
 
-            // Новогодние снежинки
-            if (typeof Snowflakes !== 'undefined') {
-                new Snowflakes({
-                    container: document.querySelector('.header'),
-                    color: '#fff',
-                    count: 30,
-                    minSize: 8,
-                    maxSize: 18,
-                    speed: 1
-                });
-            } else {
-                console.warn('Snowflakes library not loaded');
-            }
+            // Новогодние снежинки (до 15 января)
+            (function() {
+                const now = new Date();
+                if (now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15)) {
+                    const header = document.querySelector('.header');
+                    const flakes = ['❄', '❅', '❆', '•'];
+                    for (let i = 0; i < 30; i++) {
+                        const s = document.createElement('span');
+                        s.className = 'snowflake';
+                        s.textContent = flakes[Math.floor(Math.random() * flakes.length)];
+                        s.style.left = Math.random() * 100 + '%';
+                        s.style.fontSize = (8 + Math.random() * 10) + 'px';
+                        s.style.animationDuration = (5 + Math.random() * 10) + 's';
+                        s.style.animationDelay = (Math.random() * 10) + 's';
+                        header.appendChild(s);
+                    }
+                }
+            })();
         });
 
         function switchMainTab(tabName) {
