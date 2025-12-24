@@ -2051,14 +2051,17 @@
             loadRates(); loadHistory(); loadTemplates(); updateStats(); loadDraft(); loadComparisonSelectors();
             setInterval(saveDraft, 30000);
             const today = new Date().toISOString().split('T')[0];
-            document.getElementById('calcEndDate').value = today;
-            document.getElementById('calcEndDatePeriods').value = today;
+            const calcEndDate = document.getElementById('calcEndDate');
+            const calcEndDatePeriods = document.getElementById('calcEndDatePeriods');
+            if (calcEndDate) calcEndDate.value = today;
+            if (calcEndDatePeriods) calcEndDatePeriods.value = today;
 
             // Новогодние снежинки (до 15 января)
             (function() {
                 const now = new Date();
                 if (now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15)) {
                     const header = document.querySelector('.header');
+                    if (!header) return;
                     const flakes = ['❄', '❅', '❆', '•'];
                     for (let i = 0; i < 30; i++) {
                         const s = document.createElement('span');
