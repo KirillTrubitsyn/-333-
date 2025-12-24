@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2.2 - fonts +10%, feedback deletion -->
+<!-- v2.3 - New Year snowflakes -->
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -36,6 +36,24 @@
             color: white;
             padding: 20px 30px;
             position: relative;
+            overflow: hidden;
+        }
+        /* Новогодние снежинки */
+        .snowflake {
+            position: absolute;
+            top: -20px;
+            color: #fff;
+            font-size: 14px;
+            text-shadow: 0 0 5px rgba(255,255,255,0.7);
+            pointer-events: none;
+            z-index: 1;
+            animation: snowfall linear infinite;
+            opacity: 0.8;
+        }
+        @keyframes snowfall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+            10% { opacity: 0.8; }
+            100% { transform: translateY(130px) rotate(360deg); opacity: 0; }
         }
         .header::after {
             content: '';
@@ -1559,15 +1577,30 @@
             }
         }
 
-        function clearAllCache() {
+        async function clearAllCache() {
             const keys = Object.keys(localStorage).filter(k => k.startsWith('gen_cache_'));
             const count = keys.length;
-            keys.forEach(k => localStorage.removeItem(k));
-            if (count > 0) {
-                alert(`Кэш очищен! Удалено записей: ${count}`);
-            } else {
-                alert('Кэш уже пуст');
+
+            if (count === 0) {
+                showToast('Кэш уже пуст');
+                return;
             }
+
+            // Удаляем записи асинхронно, чтобы не блокировать UI
+            await new Promise(resolve => setTimeout(resolve, 0));
+            for (const k of keys) {
+                localStorage.removeItem(k);
+            }
+
+            showToast(`Кэш очищен! Удалено записей: ${count}`);
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.textContent = message;
+            toast.style.cssText = 'position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1a2744; color: white; padding: 12px 24px; border-radius: 8px; z-index: 9999; font-size: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
         }
 
         // === База знаний (Knowledge Base) ===
@@ -2020,6 +2053,25 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('calcEndDate').value = today;
             document.getElementById('calcEndDatePeriods').value = today;
+
+            // Новогодние снежинки (до 15 января)
+            (function() {
+                const now = new Date();
+                if (now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15)) {
+                    const header = document.querySelector('.header');
+                    const flakes = ['❄', '❅', '❆', '•'];
+                    for (let i = 0; i < 30; i++) {
+                        const s = document.createElement('span');
+                        s.className = 'snowflake';
+                        s.textContent = flakes[Math.floor(Math.random() * flakes.length)];
+                        s.style.left = Math.random() * 100 + '%';
+                        s.style.fontSize = (8 + Math.random() * 10) + 'px';
+                        s.style.animationDuration = (5 + Math.random() * 10) + 's';
+                        s.style.animationDelay = (Math.random() * 10) + 's';
+                        header.appendChild(s);
+                    }
+                }
+            })();
         });
 
         function switchMainTab(tabName) {
@@ -2774,7 +2826,7 @@
         function copyToClipboard() { navigator.clipboard.writeText(lastResult || document.getElementById('output').innerText).then(() => alert('Скопировано!')); }
 
         async function downloadDocx() {
-            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Footer, PageNumber } = docx;
+            const { Document, Packer, Paragraph, TextRun, AlignmentType, ImageRun, Footer, PageNumber, BorderStyle } = docx;
             const text = lastResult || document.getElementById('output').innerText;
 
             // Исключаем раздел "ИСПОЛЬЗОВАННЫЕ ИСТОЧНИКИ" из экспорта
@@ -2877,17 +2929,61 @@
             }
 
             let isFirstHeading = true;
+            let collectingSubtitle = false;
+            let subtitleLines = [];
+            let quoteLines = []; // Для сбора последовательных строк цитат
+
+            // Функция для добавления накопленных цитат как один блок
+            function flushQuotes() {
+                if (quoteLines.length > 0) {
+                    const quoteText = quoteLines.join(' ');
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: quoteText, italics: true, color: "1a2744", size: 24 })],
+                        spacing: { after: 120, before: 120 },
+                        alignment: AlignmentType.JUSTIFIED,
+                        indent: { left: 720 },
+                        border: {
+                            left: { style: BorderStyle.SINGLE, size: 12, color: "C9A227", space: 10 }
+                        }
+                    }));
+                    quoteLines = [];
+                }
+            }
+
             for (const line of filteredLines) {
                 const trimmed = line.trim();
-                if (!trimmed) continue; // Пропускаем пустые строки
+                if (!trimmed) {
+                    // При пустой строке - сбрасываем накопленные цитаты
+                    flushQuotes();
+                    // Если собирали подзаголовок - добавляем его
+                    if (collectingSubtitle && subtitleLines.length > 0) {
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: subtitleLines.join(' '), size: 24, color: "1a2744" })],
+                            alignment: AlignmentType.CENTER,
+                            spacing: { after: 200 }
+                        }));
+                        subtitleLines = [];
+                        collectingSubtitle = false;
+                    }
+                    continue;
+                }
+
+                // Проверяем, является ли строка цитатой (начинается с «)
+                const isQuoteLine = trimmed.startsWith('«') || trimmed.startsWith('_«');
 
                 // Главный заголовок документа (первая строка в верхнем регистре)
                 const isDocTitle = isFirstHeading && /^[А-ЯЁA-Z\s]+$/.test(trimmed) && trimmed.length > 5;
                 const isMainHeading = /^\d+\.\s+[А-ЯЁA-Z\s]+$/.test(trimmed);
                 const isSubHeading = /^\d+\.\d+\.?\s+/.test(trimmed);
 
+                // Если это не цитата - сбрасываем накопленные цитаты
+                if (!isQuoteLine) {
+                    flushQuotes();
+                }
+
                 if (isDocTitle) {
                     isFirstHeading = false;
+                    collectingSubtitle = true;
                     // Красивый заголовок документа
                     children.push(new Paragraph({
                         children: [new TextRun({ text: trimmed, bold: true, size: 32, color: "1a2744" })],
@@ -2898,19 +2994,48 @@
                     children.push(new Paragraph({
                         children: [new TextRun({ text: "━━━━━━━━━━━━━━━━━━━━", color: "C9A227", size: 16 })],
                         alignment: AlignmentType.CENTER,
-                        spacing: { after: 200 }
+                        spacing: { after: 100 }
                     }));
+                } else if (collectingSubtitle && !isMainHeading) {
+                    // Собираем строки подзаголовка
+                    subtitleLines.push(trimmed);
                 } else if (isMainHeading) {
+                    // При встрече основного заголовка - сохраняем подзаголовок если есть
+                    if (subtitleLines.length > 0) {
+                        children.push(new Paragraph({
+                            children: [new TextRun({ text: subtitleLines.join(' '), size: 24, color: "1a2744" })],
+                            alignment: AlignmentType.CENTER,
+                            spacing: { after: 200 }
+                        }));
+                        subtitleLines = [];
+                    }
+                    collectingSubtitle = false;
                     isFirstHeading = false;
                     // Пробел перед разделом
                     children.push(new Paragraph({ text: '', spacing: { after: 120 } }));
                     children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 26, color: "1a2744" })], spacing: { before: 100, after: 100 } }));
                 } else if (isSubHeading) {
                     children.push(new Paragraph({ children: [new TextRun({ text: trimmed, bold: true, size: 24, color: "1a2744" })], spacing: { before: 160, after: 80 } }));
+                } else if (isQuoteLine) {
+                    // Накапливаем строки цитат
+                    let quoteText = trimmed.replace(/^_«/, '«').replace(/»_$/, '»');
+                    quoteLines.push(quoteText);
                 } else {
                     // Обычный параграф с поддержкой курсива для цитат
                     children.push(new Paragraph({ children: parseTextWithItalics(trimmed, 24), spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
                 }
+            }
+
+            // Сбрасываем оставшиеся цитаты
+            flushQuotes();
+
+            // Если остались несохраненные строки подзаголовка
+            if (subtitleLines.length > 0) {
+                children.push(new Paragraph({
+                    children: [new TextRun({ text: subtitleLines.join(' '), size: 24, color: "1a2744" })],
+                    alignment: AlignmentType.CENTER,
+                    spacing: { after: 200 }
+                }));
             }
             const doc = new Document({
                 sections: [{
