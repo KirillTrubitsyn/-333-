@@ -828,6 +828,10 @@
         /* Hidden for testers */
         .admin-only { display: block; }
         body.tester-mode .admin-only { display: none !important; }
+        /* Mobile: hide user badge */
+        @media (max-width: 768px) {
+            .user-badge { display: none !important; }
+        }
     </style>
 </head>
 <body>
