@@ -55,6 +55,48 @@
             10% { opacity: 0.8; }
             100% { transform: translateY(130px) rotate(360deg); opacity: 0; }
         }
+        /* Гирлянда */
+        .garland {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            display: flex;
+            justify-content: space-around;
+            z-index: 5;
+            pointer-events: none;
+        }
+        .garland-light {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-top: -2px;
+            animation: glow 1.5s ease-in-out infinite;
+            box-shadow: 0 0 6px currentColor, 0 0 10px currentColor;
+        }
+        .garland-light:nth-child(4n+1) { color: #ff6b6b; animation-delay: 0s; }
+        .garland-light:nth-child(4n+2) { color: #ffd93d; animation-delay: 0.3s; }
+        .garland-light:nth-child(4n+3) { color: #6bcb77; animation-delay: 0.6s; }
+        .garland-light:nth-child(4n+4) { color: #4d96ff; animation-delay: 0.9s; }
+        @keyframes glow {
+            0%, 100% { opacity: 0.4; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        /* Шапка Санты на логотипе */
+        .header-logo-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .santa-hat {
+            position: absolute;
+            top: -10px;
+            left: -5px;
+            font-size: 24px;
+            transform: rotate(-20deg);
+            z-index: 10;
+            filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.3));
+        }
         .header::after {
             content: '';
             position: absolute;
@@ -786,6 +828,10 @@
         /* Hidden for testers */
         .admin-only { display: block; }
         body.tester-mode .admin-only { display: none !important; }
+        /* Mobile: hide user badge */
+        @media (max-width: 768px) {
+            .user-badge { display: none !important; }
+        }
     </style>
 </head>
 <body>
@@ -830,8 +876,13 @@
 
     <div class="container">
         <div class="header">
+            <!-- Гирлянда -->
+            <div class="garland" id="garland"></div>
             <div class="header-content">
-                <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
+                <div class="header-logo-wrapper">
+                    <span class="santa-hat">🎅</span>
+                    <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
+                </div>
                 <div class="header-text">
                     <div class="header-title">
                         <span class="anti">Anti</span><span class="num">333</span><span class="ai">.AI</span>
@@ -2056,12 +2107,14 @@
             if (calcEndDate) calcEndDate.value = today;
             if (calcEndDatePeriods) calcEndDatePeriods.value = today;
 
-            // Новогодние снежинки (до 15 января)
+            // Новогодние украшения (до 15 января)
             (function() {
                 const now = new Date();
                 if (now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15)) {
                     const header = document.querySelector('.header');
                     if (!header) return;
+
+                    // Снежинки
                     const flakes = ['❄', '❅', '❆', '•'];
                     for (let i = 0; i < 30; i++) {
                         const s = document.createElement('span');
@@ -2072,6 +2125,16 @@
                         s.style.animationDuration = (5 + Math.random() * 10) + 's';
                         s.style.animationDelay = (Math.random() * 10) + 's';
                         header.appendChild(s);
+                    }
+
+                    // Гирлянда
+                    const garland = document.getElementById('garland');
+                    if (garland) {
+                        for (let i = 0; i < 20; i++) {
+                            const light = document.createElement('div');
+                            light.className = 'garland-light';
+                            garland.appendChild(light);
+                        }
                     }
                 }
             })();
