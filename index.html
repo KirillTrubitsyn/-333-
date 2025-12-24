@@ -2039,19 +2039,18 @@
             document.getElementById('calcEndDate').value = today;
             document.getElementById('calcEndDatePeriods').value = today;
 
-            // Новогодние снежинки (до 15 января)
-            const now = new Date();
-            if (now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15)) {
+            // Новогодние снежинки
+            if (typeof Snowflakes !== 'undefined') {
                 new Snowflakes({
                     container: document.querySelector('.header'),
-                    color: '#ffffff',
+                    color: '#fff',
                     count: 30,
                     minSize: 8,
                     maxSize: 18,
-                    minOpacity: 0.4,
-                    maxOpacity: 0.9,
                     speed: 1
                 });
+            } else {
+                console.warn('Snowflakes library not loaded');
             }
         });
 
