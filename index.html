@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- v2.2 - fonts +10%, feedback deletion -->
+<!-- v2.3 - New Year snowflakes -->
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -36,86 +36,7 @@
             color: white;
             padding: 20px 30px;
             position: relative;
-            overflow: visible;
-        }
-        /* Новогодние украшения */
-        .header-snowflakes {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-        .snowflake {
-            position: absolute;
-            color: rgba(255, 255, 255, 0.7);
-            top: 0;
-            animation: snowfall linear infinite;
-            text-shadow: 0 0 5px rgba(255,255,255,0.5);
-            user-select: none;
-        }
-        @keyframes snowfall {
-            0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
-            10% { opacity: 1; }
-            90% { opacity: 0.8; }
-            100% { transform: translateY(120px) rotate(360deg); opacity: 0; }
-        }
-        .header-logo-wrapper {
-            position: relative;
-            flex-shrink: 0;
-        }
-        .santa-hat {
-            position: absolute;
-            top: -8px;
-            left: -8px;
-            width: 35px;
-            height: 25px;
-            z-index: 10;
-            transform: rotate(-15deg);
-        }
-        .santa-hat::before {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 8px;
-            background: white;
-            border-radius: 2px;
-        }
-        .santa-hat::after {
-            content: '';
-            position: absolute;
-            bottom: 6px;
-            left: 2px;
-            width: 0;
-            height: 0;
-            border-left: 16px solid transparent;
-            border-right: 16px solid transparent;
-            border-bottom: 22px solid #d42426;
-            filter: drop-shadow(1px 1px 2px rgba(0,0,0,0.3));
-        }
-        .santa-hat-ball {
-            position: absolute;
-            top: -5px;
-            right: 3px;
-            width: 10px;
-            height: 10px;
-            background: white;
-            border-radius: 50%;
-            z-index: 11;
-        }
-        .header-gifts {
-            position: absolute;
-            left: 70px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 18px;
-            display: flex;
-            gap: 2px;
-            z-index: 2;
+            overflow: hidden;
         }
         .header::after {
             content: '';
@@ -892,14 +813,8 @@
 
     <div class="container">
         <div class="header">
-            <!-- Новогодние снежинки -->
-            <div class="header-snowflakes" id="snowflakes"></div>
             <div class="header-content">
-                <div class="header-logo-wrapper">
-                    <div class="santa-hat"><div class="santa-hat-ball"></div></div>
-                    <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
-                    <div class="header-gifts">🎁</div>
-                </div>
+                <img src="/icon-192.png" alt="Anti333.AI Logo" class="header-logo">
                 <div class="header-text">
                     <div class="header-title">
                         <span class="anti">Anti</span><span class="num">333</span><span class="ai">.AI</span>
@@ -1474,6 +1389,8 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Новогодние снежинки -->
+    <script src="https://unpkg.com/magic-snowflakes/dist/snowflakes.min.js"></script>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -2122,25 +2039,21 @@
             document.getElementById('calcEndDate').value = today;
             document.getElementById('calcEndDatePeriods').value = today;
 
-            // Новогодние снежинки
-            initSnowflakes();
-        });
-
-        function initSnowflakes() {
-            const container = document.getElementById('snowflakes');
-            if (!container) return;
-            const snowflakeChars = ['❄', '❅', '❆', '•'];
-            for (let i = 0; i < 40; i++) {
-                const snowflake = document.createElement('span');
-                snowflake.className = 'snowflake';
-                snowflake.textContent = snowflakeChars[Math.floor(Math.random() * snowflakeChars.length)];
-                snowflake.style.left = Math.random() * 100 + '%';
-                snowflake.style.animationDuration = (4 + Math.random() * 6) + 's';
-                snowflake.style.animationDelay = Math.random() * 8 + 's';
-                snowflake.style.fontSize = (12 + Math.random() * 14) + 'px';
-                container.appendChild(snowflake);
+            // Новогодние снежинки (до 15 января)
+            const now = new Date();
+            if (now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15)) {
+                new Snowflakes({
+                    container: document.querySelector('.header'),
+                    color: '#ffffff',
+                    count: 30,
+                    minSize: 8,
+                    maxSize: 18,
+                    minOpacity: 0.4,
+                    maxOpacity: 0.9,
+                    speed: 1
+                });
             }
-        }
+        });
 
         function switchMainTab(tabName) {
             document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
