@@ -2888,51 +2888,44 @@
                 );
             }
 
-            // Функция для парсинга текста с цитатами
-            function parseTextWithQuotes(text, isQuoteParagraph = false) {
-                const quoteColor = "1a2744"; // Тёмно-синий
-
-                // Если это полностью цитата (параграф-цитата) - форматируем весь текст
-                if (isQuoteParagraph) {
-                    // Убираем маркеры курсива _..._ если есть
-                    let cleanText = text.replace(/^_«/, '«').replace(/»_$/, '»');
-                    return [new TextRun({ text: cleanText, italics: true, color: quoteColor, size: 24 })];
-                }
-
-                // Для обычных параграфов - ищем цитаты внутри текста
+            // Функция для парсинга текста с курсивом _«текст»_ -> italic TextRun
+            function parseTextWithItalics(text, baseSize = 24, baseColor = null) {
                 const runs = [];
-                const pattern = /_«([^»]+)»_|_([^_]+)_|«([^»]+)»/g;
+                // Регулярка для поиска _текст_ (курсив)
+                const italicPattern = /_([^_]+)_/g;
                 let lastIndex = 0;
                 let match;
 
-                while ((match = pattern.exec(text)) !== null) {
-                    // Добавляем текст до цитаты
+                while ((match = italicPattern.exec(text)) !== null) {
+                    // Добавляем текст до курсива
                     if (match.index > lastIndex) {
-                        runs.push(new TextRun({ text: text.slice(lastIndex, match.index), size: 24 }));
+                        const beforeText = text.substring(lastIndex, match.index);
+                        const runOptions = { text: beforeText, size: baseSize };
+                        if (baseColor) runOptions.color = baseColor;
+                        runs.push(new TextRun(runOptions));
                     }
-                    // match[1] = _«текст»_, match[2] = _текст_, match[3] = «текст»
-                    const quoteText = match[1] || match[2] || match[3];
-                    if (match[1] || match[3]) {
-                        // Цитата в кавычках
-                        runs.push(new TextRun({ text: '«' + quoteText + '»', italics: true, color: quoteColor, size: 24 }));
-                    } else {
-                        // Обычный курсив
-                        runs.push(new TextRun({ text: quoteText, italics: true, size: 24 }));
-                    }
-                    lastIndex = pattern.lastIndex;
+                    // Добавляем курсивный текст (без подчёркиваний)
+                    const italicRunOptions = { text: match[1], size: baseSize, italics: true, color: "2D5F8B" };
+                    runs.push(new TextRun(italicRunOptions));
+                    lastIndex = match.index + match[0].length;
                 }
+
                 // Добавляем оставшийся текст
                 if (lastIndex < text.length) {
-                    runs.push(new TextRun({ text: text.slice(lastIndex), size: 24 }));
+                    const afterText = text.substring(lastIndex);
+                    const runOptions = { text: afterText, size: baseSize };
+                    if (baseColor) runOptions.color = baseColor;
+                    runs.push(new TextRun(runOptions));
                 }
-                return runs.length > 0 ? runs : [new TextRun({ text: text, size: 24 })];
-            }
 
-            // Проверяем, является ли строка полностью цитатой
-            // Форматы: _«текст»_ или просто «текст» в начале строки
-            function isFullQuoteLine(text) {
-                const t = text.trim();
-                return /^_«[^»]+»_$/.test(t) || /^«[^»]+»$/.test(t);
+                // Если нет курсива, возвращаем простой TextRun
+                if (runs.length === 0) {
+                    const runOptions = { text: text, size: baseSize };
+                    if (baseColor) runOptions.color = baseColor;
+                    runs.push(new TextRun(runOptions));
+                }
+
+                return runs;
             }
 
             let isFirstHeading = true;
@@ -3028,8 +3021,8 @@
                     let quoteText = trimmed.replace(/^_«/, '«').replace(/»_$/, '»');
                     quoteLines.push(quoteText);
                 } else {
-                    const textRuns = parseTextWithQuotes(trimmed);
-                    children.push(new Paragraph({ children: textRuns, spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
+                    // Обычный параграф с поддержкой курсива для цитат
+                    children.push(new Paragraph({ children: parseTextWithItalics(trimmed, 24), spacing: { after: 60 }, alignment: AlignmentType.JUSTIFIED }));
                 }
             }
 
