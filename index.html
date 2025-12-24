@@ -36,6 +36,7 @@
             color: white;
             padding: 20px 30px;
             position: relative;
+            overflow: hidden;
         }
         .header::after {
             content: '';
@@ -1388,6 +1389,8 @@
     <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Новогодние снежинки -->
+    <script src="https://unpkg.com/magic-snowflakes/dist/snowflakes.min.js"></script>
 
     <script>
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -2035,6 +2038,21 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('calcEndDate').value = today;
             document.getElementById('calcEndDatePeriods').value = today;
+
+            // Новогодние снежинки (до 15 января)
+            const now = new Date();
+            if (now.getMonth() === 11 || (now.getMonth() === 0 && now.getDate() <= 15)) {
+                new Snowflakes({
+                    container: document.querySelector('.header'),
+                    color: '#ffffff',
+                    count: 30,
+                    minSize: 8,
+                    maxSize: 18,
+                    minOpacity: 0.4,
+                    maxOpacity: 0.9,
+                    speed: 1
+                });
+            }
         });
 
         function switchMainTab(tabName) {
