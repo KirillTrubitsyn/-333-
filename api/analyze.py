@@ -307,6 +307,110 @@ def rerank_by_document_type(results: list) -> list:
     return results
 
 
+def parse_document_sections(text: str) -> dict:
+    """
+    Парсит документ и извлекает разделы по номерам.
+    Возвращает словарь: номер раздела -> (начало, конец, текст раздела)
+    """
+    if not text:
+        return {}
+
+    # Паттерн для поиска заголовков разделов: "1.", "2.", "2.1.", "3.2.1." и т.д.
+    # Учитываем что заголовок может быть на новой строке или после пустой строки
+    section_pattern = re.compile(
+        r'^(\d+(?:\.\d+)*)\.\s+(.+?)$',
+        re.MULTILINE
+    )
+
+    sections = {}
+    matches = list(section_pattern.finditer(text))
+
+    for i, match in enumerate(matches):
+        section_num = match.group(1)  # "1", "2", "2.1" и т.д.
+        section_title = match.group(2).strip()
+        start_pos = match.start()
+
+        # Конец раздела - начало следующего раздела того же или более высокого уровня
+        # или конец документа
+        end_pos = len(text)
+        current_level = len(section_num.split('.'))
+
+        for j in range(i + 1, len(matches)):
+            next_section_num = matches[j].group(1)
+            next_level = len(next_section_num.split('.'))
+
+            # Раздел заканчивается когда встречаем раздел того же или более высокого уровня
+            if next_level <= current_level:
+                end_pos = matches[j].start()
+                break
+            # Или когда это подраздел другого родительского раздела
+            elif not next_section_num.startswith(section_num + '.'):
+                # Проверяем, является ли следующий раздел подразделом текущего
+                if next_level > current_level:
+                    continue  # Это подраздел, продолжаем
+                end_pos = matches[j].start()
+                break
+
+        section_text = text[start_pos:end_pos].strip()
+        sections[section_num] = {
+            'start': start_pos,
+            'end': end_pos,
+            'title': section_title,
+            'text': section_text,
+            'level': current_level
+        }
+
+    return sections
+
+
+def extract_section(text: str, section_num: str) -> tuple:
+    """
+    Извлекает конкретный раздел из документа.
+    Возвращает (текст_раздела, начало, конец) или (None, -1, -1) если не найден.
+    """
+    sections = parse_document_sections(text)
+
+    if section_num in sections:
+        section = sections[section_num]
+        return section['text'], section['start'], section['end']
+
+    return None, -1, -1
+
+
+def replace_section(text: str, section_num: str, new_section_text: str) -> str:
+    """
+    Заменяет конкретный раздел в документе на новый текст.
+    Остальной текст остаётся неизменным.
+    """
+    section_text, start, end = extract_section(text, section_num)
+
+    if section_text is None:
+        # Раздел не найден, возвращаем исходный текст
+        return text
+
+    # Заменяем раздел
+    result = text[:start] + new_section_text + text[end:]
+    return result
+
+
+def get_section_list(text: str) -> list:
+    """
+    Возвращает список разделов документа для отображения в UI.
+    Формат: [{"num": "1", "title": "ФАКТИЧЕСКИЕ ОБСТОЯТЕЛЬСТВА", "level": 1}, ...]
+    """
+    sections = parse_document_sections(text)
+    result = []
+
+    for num in sorted(sections.keys(), key=lambda x: [int(p) for p in x.split('.')]):
+        result.append({
+            'num': num,
+            'title': sections[num]['title'][:50],  # Обрезаем длинные заголовки
+            'level': sections[num]['level']
+        })
+
+    return result
+
+
 def compress_text(text: str) -> str:
     """Сжатие текста для экономии токенов"""
     if not text:
@@ -709,6 +813,10 @@ class handler(BaseHTTPRequestHandler):
 
             action = data.get('action', 'analyze')
 
+            # Обработка запроса на получение списка разделов
+            if action == 'get_sections':
+                return self.handle_get_sections(data)
+
             # Обработка запроса на доработку ответа
             if action == 'refine':
                 return self.handle_refine(data)
@@ -850,6 +958,39 @@ class handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(b'{"error": "Internal server error"}')
 
+    def handle_get_sections(self, data):
+        """Возвращает список разделов документа для UI"""
+        try:
+            text = data.get('text', '')
+            if not text:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Текст документа не передан"
+                }).encode())
+                return
+
+            sections = get_section_list(text)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "sections": sections
+            }).encode())
+
+        except Exception as e:
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "error": f"Ошибка: {str(e)[:200]}"
+            }).encode())
+
     def handle_refine(self, data):
         """Обработка запроса на доработку ответа"""
         try:
@@ -857,6 +998,7 @@ class handler(BaseHTTPRequestHandler):
             refinement_instructions = data.get('refinement_instructions', '').strip()
             model = data.get('model', 'gemini-3-pro-preview')
             claim_text = compress_text(data.get('claim_text', ''))
+            target_section = data.get('target_section', '').strip()  # Номер раздела для точечной доработки
 
             if not original_response:
                 self.send_response(400)
@@ -912,8 +1054,69 @@ class handler(BaseHTTPRequestHandler):
                 }).encode())
                 return
 
-            # Системный промпт для доработки
-            system_prompt = """Ты — опытный юрист, специализирующийся на гражданском праве РФ и снижении неустоек по ст. 333 ГК РФ.
+            # Режим точечной доработки (если указан конкретный раздел)
+            is_targeted_refinement = bool(target_section)
+            section_text = None
+            section_title = None
+
+            if is_targeted_refinement:
+                # Извлекаем только указанный раздел
+                section_text, start, end = extract_section(original_response, target_section)
+                if section_text is None:
+                    self.send_response(400)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Access-Control-Allow-Origin', '*')
+                    self.end_headers()
+                    self.wfile.write(json.dumps({
+                        "error": f"Раздел {target_section} не найден в документе"
+                    }).encode())
+                    return
+
+                # Получаем заголовок раздела для промпта
+                sections = parse_document_sections(original_response)
+                section_title = sections.get(target_section, {}).get('title', '')
+
+                # Системный промпт для точечной доработки
+                system_prompt = f"""Ты — опытный юрист, специализирующийся на гражданском праве РФ и снижении неустоек по ст. 333 ГК РФ.
+
+Тебе предоставлен РАЗДЕЛ {target_section} юридического документа для доработки.
+
+ТВОЯ ЗАДАЧА:
+1. Внимательно изучить раздел
+2. Выполнить указанные пользователем изменения
+3. Вернуть ТОЛЬКО доработанный раздел (с его номером и заголовком)
+
+ВАЖНО:
+- Возвращай ТОЛЬКО раздел {target_section}, не добавляй другие разделы
+- Сохраняй номер раздела и формат заголовка
+- Сохраняй юридический стиль и терминологию
+- Не добавляй лишних пояснений — только текст раздела
+- Если есть подразделы ({target_section}.1, {target_section}.2 и т.д.), включи их тоже
+
+ФОРМАТИРОВАНИЕ:
+- НЕ используй markdown-разметку (*, **, _, `, #, - в начале строк)
+- Для нумерации используй обычные цифры: {target_section}. или {target_section}.1. и т.д.
+- Для выделения используй ЗАГЛАВНЫЕ БУКВЫ в заголовках
+- Абзацы отделяй пустой строкой"""
+
+                # Пользовательский промпт для точечной доработки
+                user_prompt = f"""РАЗДЕЛ ДЛЯ ДОРАБОТКИ:
+{section_text}
+
+---
+
+ИНСТРУКЦИИ ПО ДОРАБОТКЕ:
+{refinement_instructions}
+
+---
+
+{"КОНТЕКСТ ДЕЛА (для справки):" + chr(10) + claim_text[:2000] if claim_text else ""}
+
+Пожалуйста, выполни указанные изменения и верни доработанный раздел {target_section}."""
+
+            else:
+                # Полная доработка документа (старое поведение)
+                system_prompt = """Ты — опытный юрист, специализирующийся на гражданском праве РФ и снижении неустоек по ст. 333 ГК РФ.
 
 Тебе предоставлен ранее сгенерированный юридический документ и инструкции пользователя по его доработке.
 
@@ -938,8 +1141,8 @@ class handler(BaseHTTPRequestHandler):
 - Абзацы отделяй пустой строкой
 - Сохраняй форматирование исходного документа"""
 
-            # Пользовательский промпт
-            user_prompt = f"""ИСХОДНЫЙ ДОКУМЕНТ:
+                # Пользовательский промпт
+                user_prompt = f"""ИСХОДНЫЙ ДОКУМЕНТ:
 {original_response}
 
 ---
@@ -961,15 +1164,27 @@ class handler(BaseHTTPRequestHandler):
             else:
                 refined_text = call_gemini(system_prompt, user_prompt)
 
+            # Для точечной доработки: вставляем доработанный раздел обратно в документ
+            if is_targeted_refinement:
+                refined_text = replace_section(original_response, target_section, refined_text.strip())
+
             self.send_response(200)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
-            self.wfile.write(json.dumps({
+
+            response_data = {
                 "arguments_text": refined_text,
                 "model_used": model,
                 "refined": True
-            }).encode())
+            }
+
+            # Добавляем информацию о точечной доработке
+            if is_targeted_refinement:
+                response_data["targeted_section"] = target_section
+                response_data["section_title"] = section_title
+
+            self.wfile.write(json.dumps(response_data).encode())
 
         except Exception as e:
             error_msg = str(e).replace('\n', ' ').replace('\r', ' ')[:500]

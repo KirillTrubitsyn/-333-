@@ -720,18 +720,19 @@
             background: #C6F6D5;
             border-color: #48BB78;
         }
-        .refinement-model-select {
+        .refinement-model-select, .refinement-section-select {
             display: flex;
             align-items: center;
             gap: 10px;
             margin-bottom: 12px;
         }
-        .refinement-model-select label {
+        .refinement-model-select label, .refinement-section-select label {
             font-size: 13px;
             color: #276749;
             font-weight: 500;
+            min-width: 60px;
         }
-        .refinement-model-select select {
+        .refinement-model-select select, .refinement-section-select select {
             flex: 1;
             padding: 8px 12px;
             border: 1px solid #C6F6D5;
@@ -741,9 +742,16 @@
             color: #1E3A5F;
             cursor: pointer;
         }
-        .refinement-model-select select:focus {
+        .refinement-model-select select:focus, .refinement-section-select select:focus {
             outline: none;
             border-color: #48BB78;
+        }
+        .refinement-section-info {
+            font-size: 11px;
+            color: #718096;
+            margin-top: -8px;
+            margin-bottom: 12px;
+            font-style: italic;
         }
         .refinement-content .btn-primary {
             width: 100%;
@@ -1193,6 +1201,15 @@
                                 <span class="hint-tag" onclick="addRefinementHint('Исключить из заключения')">Исключить</span>
                                 <span class="hint-tag" onclick="addRefinementHint('Сделать акцент на')">Акцент на</span>
                                 <span class="hint-tag" onclick="addRefinementHint('Сократить раздел')">Сократить</span>
+                            </div>
+                            <div class="refinement-section-select">
+                                <label>Раздел:</label>
+                                <select id="refinementSection">
+                                    <option value="">Весь документ</option>
+                                </select>
+                            </div>
+                            <div id="refinementSectionInfo" class="refinement-section-info" style="display: none;">
+                                Будет доработан только выбранный раздел, остальной текст останется без изменений
                             </div>
                             <div class="refinement-model-select">
                                 <label>Модель:</label>
@@ -2780,6 +2797,8 @@
                     document.getElementById('refinementBlock').style.display = 'block';
                     document.getElementById('refinementInput').value = '';
                     document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
+                    document.getElementById('refinementSection').value = '';
+                    loadSections();
                     saveToHistory(argumentsText, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -2824,6 +2843,7 @@
         async function refineAnswer() {
             const refinementInput = document.getElementById('refinementInput');
             const refinementModelSelect = document.getElementById('refinementModel');
+            const refinementSectionSelect = document.getElementById('refinementSection');
             const instructions = refinementInput.value.trim();
 
             if (!instructions) {
@@ -2840,22 +2860,30 @@
             const output = document.getElementById('output');
             const errorBox = document.getElementById('errorBox');
             const selectedRefinementModel = refinementModelSelect.value;
+            const targetSection = refinementSectionSelect.value;
 
             refineBtn.disabled = true;
-            refineBtn.textContent = 'Доработка...';
+            refineBtn.textContent = targetSection ? `Доработка раздела ${targetSection}...` : 'Доработка...';
             errorBox.classList.remove('active');
 
             try {
+                const requestBody = {
+                    action: 'refine',
+                    original_response: lastResult,
+                    refinement_instructions: instructions,
+                    claim_text: lastInputData?.claim_text || '',
+                    model: selectedRefinementModel
+                };
+
+                // Добавляем target_section для точечной доработки
+                if (targetSection) {
+                    requestBody.target_section = targetSection;
+                }
+
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        action: 'refine',
-                        original_response: lastResult,
-                        refinement_instructions: instructions,
-                        claim_text: lastInputData?.claim_text || '',
-                        model: selectedRefinementModel
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 const result = await response.json();
@@ -2870,11 +2898,17 @@
 
                 // Обновляем бейдж модели
                 const modelBadge = document.getElementById('modelBadge');
-                modelBadge.textContent = '✨ ' + (MODEL_NAMES[result.model_used] || result.model_used);
+                const sectionInfo = result.targeted_section ? ` (раздел ${result.targeted_section})` : '';
+                modelBadge.textContent = '✨ ' + (MODEL_NAMES[result.model_used] || result.model_used) + sectionInfo;
 
                 // Очищаем поле и показываем уведомление
                 refinementInput.value = '';
-                refinementInput.placeholder = 'Ответ доработан! Можете продолжить уточнение...';
+                refinementInput.placeholder = result.targeted_section
+                    ? `Раздел ${result.targeted_section} доработан! Можете продолжить...`
+                    : 'Ответ доработан! Можете продолжить уточнение...';
+
+                // Обновляем список разделов (на случай если структура изменилась)
+                loadSections();
 
             } catch (error) {
                 errorBox.textContent = '❌ ' + error.message;
@@ -2884,6 +2918,74 @@
                 refineBtn.textContent = 'Доработать';
             }
         }
+
+        async function loadSections() {
+            if (!lastResult) return;
+
+            const sectionSelect = document.getElementById('refinementSection');
+            const sectionInfo = document.getElementById('refinementSectionInfo');
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'get_sections',
+                        text: lastResult
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error || !result.sections) {
+                    return;
+                }
+
+                // Сохраняем текущий выбор
+                const currentValue = sectionSelect.value;
+
+                // Очищаем и заполняем список
+                sectionSelect.innerHTML = '<option value="">Весь документ</option>';
+
+                result.sections.forEach(section => {
+                    const option = document.createElement('option');
+                    option.value = section.num;
+                    const indent = '  '.repeat(section.level - 1);
+                    option.textContent = `${indent}${section.num}. ${section.title}`;
+                    sectionSelect.appendChild(option);
+                });
+
+                // Восстанавливаем выбор если возможно
+                if (currentValue && sectionSelect.querySelector(`option[value="${currentValue}"]`)) {
+                    sectionSelect.value = currentValue;
+                }
+
+                // Показываем/скрываем информацию
+                updateSectionInfo();
+
+            } catch (error) {
+                console.error('Failed to load sections:', error);
+            }
+        }
+
+        function updateSectionInfo() {
+            const sectionSelect = document.getElementById('refinementSection');
+            const sectionInfo = document.getElementById('refinementSectionInfo');
+
+            if (sectionSelect.value) {
+                sectionInfo.style.display = 'block';
+            } else {
+                sectionInfo.style.display = 'none';
+            }
+        }
+
+        // Добавляем обработчик изменения выбора раздела
+        document.addEventListener('DOMContentLoaded', function() {
+            const sectionSelect = document.getElementById('refinementSection');
+            if (sectionSelect) {
+                sectionSelect.addEventListener('change', updateSectionInfo);
+            }
+        });
 
         async function generateWithSavedData(modelToUse) {
             if (!lastInputData) return;
@@ -2949,6 +3051,8 @@
                     document.getElementById('refinementBlock').style.display = 'block';
                     document.getElementById('refinementInput').value = '';
                     document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
+                    document.getElementById('refinementSection').value = '';
+                    loadSections();
                     saveToHistory(result.arguments_text, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -3429,6 +3533,8 @@
                 document.getElementById('refinementBlock').style.display = 'block';
                 document.getElementById('refinementInput').value = '';
                 document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
+                document.getElementById('refinementSection').value = '';
+                loadSections();
                 document.getElementById('modelBadge').textContent = '📜 ' + (MODEL_NAMES[lastUsedModel] || lastUsedModel || 'История');
                 document.getElementById('timeBadge').textContent = history[index].time ? `⏱️ ${history[index].time} сек.` : '';
                 document.getElementById('outputBadges').style.display = 'block';
@@ -3470,6 +3576,8 @@
                 document.getElementById('refinementBlock').style.display = 'block';
                 document.getElementById('refinementInput').value = '';
                 document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
+                document.getElementById('refinementSection').value = '';
+                loadSections();
                 document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
                 document.getElementById('outputBadges').style.display = 'block';
             }
