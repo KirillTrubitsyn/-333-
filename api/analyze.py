@@ -411,6 +411,73 @@ def get_section_list(text: str) -> list:
     return result
 
 
+def detect_target_section(instructions: str, document: str) -> tuple:
+    """
+    Анализирует инструкции и определяет, относятся ли они к конкретному разделу.
+    Возвращает (target_section, confidence):
+    - target_section: номер раздела (например "2" или "2.1") или None
+    - confidence: 'high', 'medium', 'low' или None
+    """
+    if not instructions or not document:
+        return None, None
+
+    instructions_lower = instructions.lower()
+    sections = parse_document_sections(document)
+
+    if not sections:
+        return None, None
+
+    # Паттерны для поиска упоминаний разделов в инструкциях
+    section_patterns = [
+        # "раздел 2", "пункт 3", "п. 2.1"
+        r'(?:раздел|пункт|п\.?)\s*(\d+(?:\.\d+)*)',
+        # "в разделе 2", "из пункта 3"
+        r'(?:в|из|для)\s+(?:раздела?|пункта?)\s*(\d+(?:\.\d+)*)',
+        # "2-й раздел", "3-й пункт"
+        r'(\d+)[-]?(?:й|ый|ой)\s+(?:раздел|пункт)',
+        # Прямое упоминание номера с контекстом: "расширь 2.1"
+        r'(?:расшир|сократ|удал|добав|измен|перепиш)\S*\s+(\d+(?:\.\d+)*)',
+    ]
+
+    mentioned_sections = set()
+    for pattern in section_patterns:
+        matches = re.findall(pattern, instructions_lower)
+        for match in matches:
+            # Нормализуем номер раздела
+            section_num = match.strip('.')
+            if section_num in sections:
+                mentioned_sections.add(section_num)
+
+    # Проверяем упоминания заголовков разделов
+    for section_num, section_data in sections.items():
+        title = section_data.get('title', '').lower()
+        # Ищем ключевые слова из заголовка в инструкциях
+        title_words = [w for w in title.split() if len(w) > 4]
+        matches = sum(1 for w in title_words if w in instructions_lower)
+        if matches >= 2 or (len(title_words) <= 2 and matches >= 1):
+            mentioned_sections.add(section_num)
+
+    # Определяем результат
+    if len(mentioned_sections) == 0:
+        # Проверяем, есть ли общие указания, которые требуют обработки всего документа
+        full_doc_keywords = [
+            'весь документ', 'целиком', 'полностью', 'везде',
+            'во всех', 'каждый раздел', 'все разделы', 'общий стиль',
+            'документ в целом', 'весь текст'
+        ]
+        if any(kw in instructions_lower for kw in full_doc_keywords):
+            return None, 'high'  # Точно весь документ
+        return None, None  # Неясно, по умолчанию весь документ
+
+    elif len(mentioned_sections) == 1:
+        # Один раздел упомянут - высокая уверенность
+        return list(mentioned_sections)[0], 'high'
+
+    else:
+        # Несколько разделов упомянуты - нужен весь документ
+        return None, 'medium'
+
+
 def compress_text(text: str) -> str:
     """Сжатие текста для экономии токенов"""
     if not text:
@@ -998,7 +1065,25 @@ class handler(BaseHTTPRequestHandler):
             refinement_instructions = data.get('refinement_instructions', '').strip()
             model = data.get('model', 'gemini-3-pro-preview')
             claim_text = compress_text(data.get('claim_text', ''))
-            target_section = data.get('target_section', '').strip()  # Номер раздела для точечной доработки
+            refinement_mode = data.get('refinement_mode', 'auto')  # 'auto', 'full', 'section'
+            target_section = data.get('target_section', '').strip()  # Номер раздела для режима 'section'
+
+            # Определяем target_section в зависимости от режима
+            auto_detected = False
+            auto_confidence = None
+            if refinement_mode == 'auto':
+                # Автоматическое определение раздела по инструкциям
+                detected_section, confidence = detect_target_section(refinement_instructions, original_response)
+                if detected_section:
+                    target_section = detected_section
+                    auto_detected = True
+                    auto_confidence = confidence
+                else:
+                    target_section = ''  # Весь документ
+            elif refinement_mode == 'full':
+                # Принудительно весь документ
+                target_section = ''
+            # Для режима 'section' используем target_section как есть
 
             if not original_response:
                 self.send_response(400)
@@ -1176,13 +1261,19 @@ class handler(BaseHTTPRequestHandler):
             response_data = {
                 "arguments_text": refined_text,
                 "model_used": model,
-                "refined": True
+                "refined": True,
+                "refinement_mode": refinement_mode
             }
 
             # Добавляем информацию о точечной доработке
             if is_targeted_refinement:
                 response_data["targeted_section"] = target_section
                 response_data["section_title"] = section_title
+
+            # Добавляем информацию об авто-определении
+            if auto_detected:
+                response_data["auto_detected"] = True
+                response_data["auto_confidence"] = auto_confidence
 
             self.wfile.write(json.dumps(response_data).encode())
 

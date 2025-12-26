@@ -753,6 +753,42 @@
             margin-bottom: 12px;
             font-style: italic;
         }
+        .refinement-mode-toggle {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 12px;
+            background: #E6FFFA;
+            border-radius: 8px;
+            padding: 4px;
+        }
+        .refinement-mode-btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            background: transparent;
+            color: #276749;
+            transition: all 0.2s;
+        }
+        .refinement-mode-btn:hover {
+            background: rgba(72, 187, 120, 0.2);
+        }
+        .refinement-mode-btn.active {
+            background: white;
+            color: #276749;
+            font-weight: 600;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .refinement-mode-desc {
+            font-size: 11px;
+            color: #718096;
+            margin-bottom: 12px;
+            padding: 8px;
+            background: #F7FAFC;
+            border-radius: 6px;
+        }
         .refinement-content .btn-primary {
             width: 100%;
             background: linear-gradient(135deg, #48BB78 0%, #38B2AC 100%);
@@ -1202,10 +1238,18 @@
                                 <span class="hint-tag" onclick="addRefinementHint('Сделать акцент на')">Акцент на</span>
                                 <span class="hint-tag" onclick="addRefinementHint('Сократить раздел')">Сократить</span>
                             </div>
-                            <div class="refinement-section-select">
+                            <div class="refinement-mode-toggle">
+                                <button type="button" class="refinement-mode-btn active" data-mode="auto" onclick="setRefinementMode('auto')">🔮 Авто</button>
+                                <button type="button" class="refinement-mode-btn" data-mode="full" onclick="setRefinementMode('full')">📄 Весь документ</button>
+                                <button type="button" class="refinement-mode-btn" data-mode="section" onclick="setRefinementMode('section')">📌 Только раздел</button>
+                            </div>
+                            <div id="refinementModeDesc" class="refinement-mode-desc">
+                                Система сама определит, нужно ли перерабатывать весь документ или только указанный раздел
+                            </div>
+                            <div id="refinementSectionSelectWrapper" class="refinement-section-select" style="display: none;">
                                 <label>Раздел:</label>
                                 <select id="refinementSection">
-                                    <option value="">Весь документ</option>
+                                    <option value="">Выберите раздел...</option>
                                 </select>
                             </div>
                             <div id="refinementSectionInfo" class="refinement-section-info" style="display: none;">
@@ -2797,8 +2841,7 @@
                     document.getElementById('refinementBlock').style.display = 'block';
                     document.getElementById('refinementInput').value = '';
                     document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
-                    document.getElementById('refinementSection').value = '';
-                    loadSections();
+                    setRefinementMode('auto');
                     saveToHistory(argumentsText, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -2833,6 +2876,38 @@
         }
 
         // === REFINEMENT FUNCTIONS ===
+        let refinementMode = 'auto'; // 'auto', 'full', 'section'
+
+        function setRefinementMode(mode) {
+            refinementMode = mode;
+
+            // Обновляем активную кнопку
+            document.querySelectorAll('.refinement-mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+
+            // Обновляем описание и показываем/скрываем выбор раздела
+            const modeDesc = document.getElementById('refinementModeDesc');
+            const sectionWrapper = document.getElementById('refinementSectionSelectWrapper');
+            const sectionInfo = document.getElementById('refinementSectionInfo');
+
+            if (mode === 'auto') {
+                modeDesc.textContent = 'Система сама определит, нужно ли перерабатывать весь документ или только указанный раздел';
+                sectionWrapper.style.display = 'none';
+                sectionInfo.style.display = 'none';
+            } else if (mode === 'full') {
+                modeDesc.textContent = 'Весь документ будет переработан целиком с учётом ваших инструкций';
+                sectionWrapper.style.display = 'none';
+                sectionInfo.style.display = 'none';
+            } else if (mode === 'section') {
+                modeDesc.textContent = 'Только выбранный раздел будет переработан, остальной текст останется без изменений';
+                sectionWrapper.style.display = 'flex';
+                sectionInfo.style.display = 'block';
+                // Загружаем разделы если ещё не загружены
+                loadSections();
+            }
+        }
+
         function addRefinementHint(hint) {
             const input = document.getElementById('refinementInput');
             const currentValue = input.value.trim();
@@ -2856,14 +2931,26 @@
                 return;
             }
 
+            // Проверка для режима "section" — должен быть выбран раздел
+            if (refinementMode === 'section' && !refinementSectionSelect.value) {
+                alert('Выберите раздел для доработки');
+                return;
+            }
+
             const refineBtn = document.getElementById('refineBtn');
             const output = document.getElementById('output');
             const errorBox = document.getElementById('errorBox');
             const selectedRefinementModel = refinementModelSelect.value;
-            const targetSection = refinementSectionSelect.value;
+            const targetSection = refinementMode === 'section' ? refinementSectionSelect.value : '';
 
             refineBtn.disabled = true;
-            refineBtn.textContent = targetSection ? `Доработка раздела ${targetSection}...` : 'Доработка...';
+            if (refinementMode === 'section' && targetSection) {
+                refineBtn.textContent = `Доработка раздела ${targetSection}...`;
+            } else if (refinementMode === 'auto') {
+                refineBtn.textContent = 'Анализ и доработка...';
+            } else {
+                refineBtn.textContent = 'Доработка документа...';
+            }
             errorBox.classList.remove('active');
 
             try {
@@ -2872,11 +2959,12 @@
                     original_response: lastResult,
                     refinement_instructions: instructions,
                     claim_text: lastInputData?.claim_text || '',
-                    model: selectedRefinementModel
+                    model: selectedRefinementModel,
+                    refinement_mode: refinementMode  // 'auto', 'full', 'section'
                 };
 
-                // Добавляем target_section для точечной доработки
-                if (targetSection) {
+                // Добавляем target_section для режима section
+                if (refinementMode === 'section' && targetSection) {
                     requestBody.target_section = targetSection;
                 }
 
@@ -2898,17 +2986,28 @@
 
                 // Обновляем бейдж модели
                 const modelBadge = document.getElementById('modelBadge');
-                const sectionInfo = result.targeted_section ? ` (раздел ${result.targeted_section})` : '';
-                modelBadge.textContent = '✨ ' + (MODEL_NAMES[result.model_used] || result.model_used) + sectionInfo;
+                let badgeText = '✨ ' + (MODEL_NAMES[result.model_used] || result.model_used);
+                if (result.targeted_section) {
+                    badgeText += result.auto_detected
+                        ? ` (авто: раздел ${result.targeted_section})`
+                        : ` (раздел ${result.targeted_section})`;
+                }
+                modelBadge.textContent = badgeText;
 
                 // Очищаем поле и показываем уведомление
                 refinementInput.value = '';
-                refinementInput.placeholder = result.targeted_section
-                    ? `Раздел ${result.targeted_section} доработан! Можете продолжить...`
-                    : 'Ответ доработан! Можете продолжить уточнение...';
+                if (result.targeted_section) {
+                    refinementInput.placeholder = result.auto_detected
+                        ? `Авто-определён раздел ${result.targeted_section} — доработан! Продолжайте...`
+                        : `Раздел ${result.targeted_section} доработан! Можете продолжить...`;
+                } else {
+                    refinementInput.placeholder = 'Ответ доработан! Можете продолжить уточнение...';
+                }
 
-                // Обновляем список разделов (на случай если структура изменилась)
-                loadSections();
+                // Обновляем список разделов если в режиме section
+                if (refinementMode === 'section') {
+                    loadSections();
+                }
 
             } catch (error) {
                 errorBox.textContent = '❌ ' + error.message;
@@ -2960,32 +3059,10 @@
                     sectionSelect.value = currentValue;
                 }
 
-                // Показываем/скрываем информацию
-                updateSectionInfo();
-
             } catch (error) {
                 console.error('Failed to load sections:', error);
             }
         }
-
-        function updateSectionInfo() {
-            const sectionSelect = document.getElementById('refinementSection');
-            const sectionInfo = document.getElementById('refinementSectionInfo');
-
-            if (sectionSelect.value) {
-                sectionInfo.style.display = 'block';
-            } else {
-                sectionInfo.style.display = 'none';
-            }
-        }
-
-        // Добавляем обработчик изменения выбора раздела
-        document.addEventListener('DOMContentLoaded', function() {
-            const sectionSelect = document.getElementById('refinementSection');
-            if (sectionSelect) {
-                sectionSelect.addEventListener('change', updateSectionInfo);
-            }
-        });
 
         async function generateWithSavedData(modelToUse) {
             if (!lastInputData) return;
@@ -3051,8 +3128,7 @@
                     document.getElementById('refinementBlock').style.display = 'block';
                     document.getElementById('refinementInput').value = '';
                     document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
-                    document.getElementById('refinementSection').value = '';
-                    loadSections();
+                    setRefinementMode('auto');
                     saveToHistory(result.arguments_text, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -3533,8 +3609,7 @@
                 document.getElementById('refinementBlock').style.display = 'block';
                 document.getElementById('refinementInput').value = '';
                 document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
-                document.getElementById('refinementSection').value = '';
-                loadSections();
+                setRefinementMode('auto');
                 document.getElementById('modelBadge').textContent = '📜 ' + (MODEL_NAMES[lastUsedModel] || lastUsedModel || 'История');
                 document.getElementById('timeBadge').textContent = history[index].time ? `⏱️ ${history[index].time} сек.` : '';
                 document.getElementById('outputBadges').style.display = 'block';
@@ -3576,8 +3651,7 @@
                 document.getElementById('refinementBlock').style.display = 'block';
                 document.getElementById('refinementInput').value = '';
                 document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
-                document.getElementById('refinementSection').value = '';
-                loadSections();
+                setRefinementMode('auto');
                 document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
                 document.getElementById('outputBadges').style.display = 'block';
             }
