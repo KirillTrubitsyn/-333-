@@ -707,6 +707,12 @@ class handler(BaseHTTPRequestHandler):
             body = self.rfile.read(content_length)
             data = json.loads(body.decode('utf-8'))
 
+            action = data.get('action', 'analyze')
+
+            # Обработка запроса на доработку ответа
+            if action == 'refine':
+                return self.handle_refine(data)
+
             claim_text = compress_text(data.get('claim_text', ''))
             response_text = compress_text(data.get('response_text', ''))
             other_documents = compress_text(data.get('other_documents', ''))
@@ -843,6 +849,130 @@ class handler(BaseHTTPRequestHandler):
                 self.send_header('Access-Control-Allow-Origin', '*')
                 self.end_headers()
                 self.wfile.write(b'{"error": "Internal server error"}')
+
+    def handle_refine(self, data):
+        """Обработка запроса на доработку ответа"""
+        try:
+            original_response = data.get('original_response', '')
+            refinement_instructions = data.get('refinement_instructions', '').strip()
+            model = data.get('model', 'gemini-3-pro-preview')
+            claim_text = compress_text(data.get('claim_text', ''))
+
+            if not original_response:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Исходный ответ не передан"
+                }).encode())
+                return
+
+            if not refinement_instructions:
+                self.send_response(400)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Укажите инструкции для доработки"
+                }).encode())
+                return
+
+            # Проверяем доступность API
+            is_claude = model.startswith('claude')
+            is_openai = model.startswith('gpt') or model.startswith('o1') or model.startswith('o3')
+
+            if is_claude and not ANTHROPIC_API_KEY:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Claude API не настроен"
+                }).encode())
+                return
+
+            if is_openai and not OPENAI_API_KEY:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "OpenAI API не настроен"
+                }).encode())
+                return
+
+            if not is_claude and not is_openai and not GEMINI_API_KEY:
+                self.send_response(503)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "error": "Gemini API не настроен"
+                }).encode())
+                return
+
+            # Системный промпт для доработки
+            system_prompt = """Ты — опытный юрист, специализирующийся на гражданском праве РФ и снижении неустоек по ст. 333 ГК РФ.
+
+Тебе предоставлен ранее сгенерированный юридический документ и инструкции пользователя по его доработке.
+
+ТВОЯ ЗАДАЧА:
+1. Внимательно изучить исходный документ
+2. Выполнить указанные пользователем изменения
+3. Сохранить общую структуру и стиль документа
+4. Вернуть ПОЛНУЮ доработанную версию документа
+
+ВАЖНО:
+- Возвращай ПОЛНЫЙ текст документа, а не только изменённые части
+- Сохраняй юридический стиль и терминологию
+- Не добавляй лишних пояснений — только итоговый документ
+- Если пользователь просит исключить что-то — удали это полностью
+- Если пользователь просит расширить — добавь дополнительную аргументацию
+- Сохраняй ссылки на законодательство и судебную практику"""
+
+            # Пользовательский промпт
+            user_prompt = f"""ИСХОДНЫЙ ДОКУМЕНТ:
+{original_response}
+
+---
+
+ИНСТРУКЦИИ ПО ДОРАБОТКЕ:
+{refinement_instructions}
+
+---
+
+{"КОНТЕКСТ ДЕЛА (для справки):" + chr(10) + claim_text[:3000] if claim_text else ""}
+
+Пожалуйста, выполни указанные изменения и верни полную доработанную версию документа."""
+
+            # Вызываем модель
+            if is_claude:
+                refined_text = call_claude(system_prompt, user_prompt, model)
+            elif is_openai:
+                refined_text = call_openai(system_prompt, user_prompt, model)
+            else:
+                refined_text = call_gemini(system_prompt, user_prompt)
+
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "arguments_text": refined_text,
+                "model_used": model,
+                "refined": True
+            }).encode())
+
+        except Exception as e:
+            error_msg = str(e).replace('\n', ' ').replace('\r', ' ')[:500]
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            self.wfile.write(json.dumps({
+                "error": f"Ошибка доработки: {error_msg}"
+            }, ensure_ascii=False).encode('utf-8'))
 
     def do_OPTIONS(self):
         self.send_response(200)

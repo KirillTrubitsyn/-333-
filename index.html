@@ -635,6 +635,78 @@
         }
         .action-buttons { display: flex; gap: 10px; margin-top: 15px; flex-wrap: wrap; }
         .action-buttons .btn { flex: 1; min-width: 100px; }
+
+        /* Refinement Block */
+        .refinement-block {
+            margin-top: 20px;
+            background: linear-gradient(135deg, #F0FFF4 0%, #E6FFFA 100%);
+            border: 1px solid #9AE6B4;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .refinement-header {
+            background: linear-gradient(135deg, #48BB78 0%, #38B2AC 100%);
+            color: white;
+            padding: 12px 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .refinement-icon { font-size: 18px; }
+        .refinement-content { padding: 16px; }
+        .refinement-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 1px solid #C6F6D5;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            background: white;
+            transition: border-color 0.2s;
+        }
+        .refinement-input:focus {
+            outline: none;
+            border-color: #48BB78;
+            box-shadow: 0 0 0 3px rgba(72, 187, 120, 0.1);
+        }
+        .refinement-hints {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 12px 0;
+        }
+        .hint-tag {
+            background: white;
+            border: 1px solid #C6F6D5;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            color: #276749;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .hint-tag:hover {
+            background: #C6F6D5;
+            border-color: #48BB78;
+        }
+        .refinement-content .btn-primary {
+            width: 100%;
+            background: linear-gradient(135deg, #48BB78 0%, #38B2AC 100%);
+            border: none;
+            padding: 12px;
+            font-size: 15px;
+        }
+        .refinement-content .btn-primary:hover {
+            opacity: 0.9;
+        }
+        .refinement-content .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         .error-box {
             background: #FFF5F5;
             border: 1px solid #FC8181;
@@ -1046,6 +1118,25 @@
                         <button class="btn btn-success btn-sm" onclick="downloadDocx()">📥 DOCX</button>
                         <button class="btn btn-warning btn-sm" onclick="regenerateWithDifferentModel()">🔄 Другая модель</button>
                         <button class="btn btn-secondary btn-sm" onclick="saveAsTemplate()">💾 Шаблон</button>
+                    </div>
+
+                    <!-- Блок доработки ответа -->
+                    <div id="refinementBlock" class="refinement-block" style="display: none;">
+                        <div class="refinement-header">
+                            <span class="refinement-icon">✨</span>
+                            <span>Доработать ответ</span>
+                        </div>
+                        <div class="refinement-content">
+                            <textarea id="refinementInput" class="refinement-input" placeholder="Укажите, что нужно изменить: расширить довод, добавить обстоятельства, исключить что-то из заключения..."></textarea>
+                            <div class="refinement-hints">
+                                <span class="hint-tag" onclick="addRefinementHint('Расширить аргументацию по')">Расширить довод</span>
+                                <span class="hint-tag" onclick="addRefinementHint('Добавить ссылку на')">Добавить ссылку</span>
+                                <span class="hint-tag" onclick="addRefinementHint('Исключить из заключения')">Исключить</span>
+                                <span class="hint-tag" onclick="addRefinementHint('Сделать акцент на')">Акцент на</span>
+                                <span class="hint-tag" onclick="addRefinementHint('Сократить раздел')">Сократить</span>
+                            </div>
+                            <button id="refineBtn" class="btn btn-primary" onclick="refineAnswer()">Доработать</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2467,6 +2558,7 @@
             errorBox.classList.remove('active');
             actionButtons.style.display = 'none';
             outputBadges.style.display = 'none';
+            document.getElementById('refinementBlock').style.display = 'none';
 
             try {
                 const totalFiles = claimFiles.length + responseFiles.length;
@@ -2608,6 +2700,8 @@
                     output.classList.remove('output-empty');
                     output.style.display = 'block';
                     actionButtons.style.display = 'flex';
+                    document.getElementById('refinementBlock').style.display = 'block';
+                    document.getElementById('refinementInput').value = '';
                     saveToHistory(argumentsText, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -2641,6 +2735,76 @@
             generateWithSavedData(modelId);
         }
 
+        // === REFINEMENT FUNCTIONS ===
+        function addRefinementHint(hint) {
+            const input = document.getElementById('refinementInput');
+            const currentValue = input.value.trim();
+            input.value = currentValue ? currentValue + ' ' + hint + ' ' : hint + ' ';
+            input.focus();
+        }
+
+        async function refineAnswer() {
+            const refinementInput = document.getElementById('refinementInput');
+            const instructions = refinementInput.value.trim();
+
+            if (!instructions) {
+                alert('Укажите, что нужно изменить в ответе');
+                return;
+            }
+
+            if (!lastResult) {
+                alert('Сначала сгенерируйте ответ');
+                return;
+            }
+
+            const refineBtn = document.getElementById('refineBtn');
+            const output = document.getElementById('output');
+            const errorBox = document.getElementById('errorBox');
+
+            refineBtn.disabled = true;
+            refineBtn.textContent = 'Доработка...';
+            errorBox.classList.remove('active');
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'refine',
+                        original_response: lastResult,
+                        refinement_instructions: instructions,
+                        claim_text: lastInputData?.claim_text || '',
+                        model: lastUsedModel || selectedModel
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.error) {
+                    throw new Error(result.error);
+                }
+
+                // Обновляем результат
+                lastResult = result.arguments_text;
+                output.innerHTML = formatOutputHtml(result.arguments_text);
+
+                // Обновляем бейдж модели
+                const modelBadge = document.getElementById('modelBadge');
+                modelBadge.textContent = '✨ ' + (MODEL_NAMES[result.model_used] || result.model_used);
+
+                // Очищаем поле и показываем уведомление
+                refinementInput.value = '';
+                refinementInput.placeholder = 'Ответ доработан! Можете продолжить уточнение...';
+
+            } catch (error) {
+                errorBox.textContent = '❌ ' + error.message;
+                errorBox.classList.add('active');
+            } finally {
+                refineBtn.disabled = false;
+                refineBtn.textContent = 'Доработать';
+            }
+        }
+
         async function generateWithSavedData(modelToUse) {
             if (!lastInputData) return;
             const analyzeBtn = document.getElementById('analyzeBtn');
@@ -2655,6 +2819,7 @@
             output.style.display = 'none';
             errorBox.classList.remove('active');
             actionButtons.style.display = 'none';
+            document.getElementById('refinementBlock').style.display = 'none';
 
             try {
                 const ratesInfo = currentRate ? `Текущая ставка ЦБ РФ: ${currentRate.key_rate}%` : '';
@@ -2701,6 +2866,8 @@
                     output.classList.remove('output-empty');
                     output.style.display = 'block';
                     actionButtons.style.display = 'flex';
+                    document.getElementById('refinementBlock').style.display = 'block';
+                    document.getElementById('refinementInput').value = '';
                     saveToHistory(result.arguments_text, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -3178,6 +3345,8 @@
                 output.classList.remove('output-empty');
                 output.style.display = 'block';
                 document.getElementById('actionButtons').style.display = 'flex';
+                document.getElementById('refinementBlock').style.display = 'block';
+                document.getElementById('refinementInput').value = '';
                 document.getElementById('modelBadge').textContent = '📜 ' + (MODEL_NAMES[lastUsedModel] || lastUsedModel || 'История');
                 document.getElementById('timeBadge').textContent = history[index].time ? `⏱️ ${history[index].time} сек.` : '';
                 document.getElementById('outputBadges').style.display = 'block';
@@ -3216,6 +3385,8 @@
                 output.classList.remove('output-empty');
                 output.style.display = 'block';
                 document.getElementById('actionButtons').style.display = 'flex';
+                document.getElementById('refinementBlock').style.display = 'block';
+                document.getElementById('refinementInput').value = '';
                 document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
                 document.getElementById('outputBadges').style.display = 'block';
             }
