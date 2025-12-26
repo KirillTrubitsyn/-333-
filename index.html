@@ -3971,7 +3971,10 @@
                                 ${c.created_at ? ` • ${new Date(c.created_at).toLocaleDateString('ru-RU')}` : ''}
                             </div>
                         </div>
-                        <button onclick="deleteInviteCode('${c.code}')" style="background: none; border: none; color: #E53E3E; cursor: pointer;">✕</button>
+                        <div style="display: flex; gap: 8px;">
+                            ${c.used_by ? `<button onclick="resetInviteCode('${c.code}')" style="background: none; border: none; color: #3182CE; cursor: pointer; font-size: 12px;" title="Сбросить код">↻</button>` : ''}
+                            <button onclick="deleteInviteCode('${c.code}')" style="background: none; border: none; color: #E53E3E; cursor: pointer;" title="Удалить код">✕</button>
+                        </div>
                     </div>
                 `).join('');
             } catch (e) {
@@ -4015,6 +4018,28 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action: 'delete_code', code })
                 });
+                loadInviteCodes();
+            } catch (e) {
+                alert('Ошибка: ' + e.message);
+            }
+        }
+
+        async function resetInviteCode(code) {
+            if (!confirm(`Сбросить код ${code}? Он снова станет доступен для использования.`)) return;
+
+            try {
+                const response = await fetch('/api/access', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'reset_code', code })
+                });
+                const result = await response.json();
+
+                if (result.error) {
+                    alert(result.error);
+                    return;
+                }
+
                 loadInviteCodes();
             } catch (e) {
                 alert('Ошибка: ' + e.message);
