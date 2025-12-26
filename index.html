@@ -2931,17 +2931,30 @@
                 return;
             }
 
-            // Проверка для режима "section" — должен быть выбран раздел
-            if (refinementMode === 'section' && !refinementSectionSelect.value) {
-                alert('Выберите раздел для доработки');
-                return;
+            // Определение целевого раздела
+            let targetSection = '';
+
+            if (refinementMode === 'section') {
+                if (refinementSectionSelect.value) {
+                    // Пользователь выбрал раздел вручную
+                    targetSection = refinementSectionSelect.value;
+                } else {
+                    // Пробуем авто-определить раздел из текста инструкции
+                    const sectionMatch = instructions.match(/(?:раздел|пункт|секц\w*|часть)\s*(\d+(?:\.\d+)*)/i);
+                    if (sectionMatch) {
+                        targetSection = sectionMatch[1];
+                    } else {
+                        // Не удалось определить раздел
+                        alert('Укажите раздел в тексте запроса (например, "раздел 4") или выберите из списка');
+                        return;
+                    }
+                }
             }
 
             const refineBtn = document.getElementById('refineBtn');
             const output = document.getElementById('output');
             const errorBox = document.getElementById('errorBox');
             const selectedRefinementModel = refinementModelSelect.value;
-            const targetSection = refinementMode === 'section' ? refinementSectionSelect.value : '';
 
             refineBtn.disabled = true;
             if (refinementMode === 'section' && targetSection) {
