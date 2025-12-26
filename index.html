@@ -236,6 +236,34 @@
         .tab-btn.active { background: #1a2744; color: white; border-color: #1a2744; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .textarea-wrapper {
+            position: relative;
+        }
+        .textarea-wrapper textarea {
+            padding-right: 40px;
+        }
+        .clear-textarea-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border: none;
+            background: #E53E3E;
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.7;
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .clear-textarea-btn:hover {
+            opacity: 1;
+            transform: scale(1.1);
+        }
         .file-upload {
             border: 2px dashed #CBD5E0;
             border-radius: 8px;
@@ -1027,7 +1055,10 @@
                             <div id="claim-file-list" class="file-list"></div>
                         </div>
                         <div id="claim-text-tab" class="tab-content">
-                            <textarea id="claimText" placeholder="Вставьте текст иска..."></textarea>
+                            <div class="textarea-wrapper">
+                                <textarea id="claimText" placeholder="Вставьте текст иска..."></textarea>
+                                <button class="clear-textarea-btn" onclick="clearTextarea('claimText')" title="Очистить поле">✕</button>
+                            </div>
                         </div>
                     </div>
 
@@ -1046,7 +1077,10 @@
                             <div id="response-file-list" class="file-list"></div>
                         </div>
                         <div id="response-text-tab" class="tab-content">
-                            <textarea id="responseText" placeholder="Вставьте текст отзыва..."></textarea>
+                            <div class="textarea-wrapper">
+                                <textarea id="responseText" placeholder="Вставьте текст отзыва..."></textarea>
+                                <button class="clear-textarea-btn" onclick="clearTextarea('responseText')" title="Очистить поле">✕</button>
+                            </div>
                         </div>
                     </div>
 
@@ -2301,6 +2335,16 @@
             document.getElementById(`${docType}-file-tab`).classList.remove('active');
             document.getElementById(`${docType}-text-tab`).classList.remove('active');
             document.getElementById(`${docType}-${tabType}-tab`).classList.add('active');
+        }
+
+        function clearTextarea(id) {
+            const textarea = document.getElementById(id);
+            if (textarea && textarea.value) {
+                if (confirm('Очистить поле?')) {
+                    textarea.value = '';
+                    textarea.focus();
+                }
+            }
         }
 
         function handleMultiFileSelect(input, docType) {
