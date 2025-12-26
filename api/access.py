@@ -97,7 +97,8 @@ class handler(BaseHTTPRequestHandler):
                 # Проверяем, не использован ли уже
                 if invite.get('used_by'):
                     # Код уже использован, но разрешаем повторный вход с тем же именем
-                    if invite['used_by'] != name:
+                    # Сравнение регистронезависимое
+                    if invite['used_by'].lower().strip() != name.lower().strip():
                         raise Exception("Этот код уже использован другим пользователем")
                 else:
                     # Помечаем код как использованный
@@ -178,6 +179,37 @@ class handler(BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps({
                     "success": True,
                     "message": "Код удалён"
+                }).encode())
+
+            elif action == 'reset_code':
+                # Сброс кода (пометить как неиспользованный)
+                code = data.get('code', '').strip()
+
+                if not code:
+                    raise Exception("Код не указан")
+
+                url = f"{SUPABASE_URL}/rest/v1/invite_codes?code=eq.{urllib.parse.quote(code)}"
+                headers = {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps({"used_by": None}).encode('utf-8'),
+                    headers=headers,
+                    method="PATCH"
+                )
+                urllib.request.urlopen(req, timeout=10)
+
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(json.dumps({
+                    "success": True,
+                    "message": "Код сброшен"
                 }).encode())
 
             else:
