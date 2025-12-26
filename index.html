@@ -692,6 +692,31 @@
             background: #C6F6D5;
             border-color: #48BB78;
         }
+        .refinement-model-select {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .refinement-model-select label {
+            font-size: 13px;
+            color: #276749;
+            font-weight: 500;
+        }
+        .refinement-model-select select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #C6F6D5;
+            border-radius: 6px;
+            font-size: 13px;
+            background: white;
+            color: #1E3A5F;
+            cursor: pointer;
+        }
+        .refinement-model-select select:focus {
+            outline: none;
+            border-color: #48BB78;
+        }
         .refinement-content .btn-primary {
             width: 100%;
             background: linear-gradient(135deg, #48BB78 0%, #38B2AC 100%);
@@ -1134,6 +1159,14 @@
                                 <span class="hint-tag" onclick="addRefinementHint('Исключить из заключения')">Исключить</span>
                                 <span class="hint-tag" onclick="addRefinementHint('Сделать акцент на')">Акцент на</span>
                                 <span class="hint-tag" onclick="addRefinementHint('Сократить раздел')">Сократить</span>
+                            </div>
+                            <div class="refinement-model-select">
+                                <label>Модель:</label>
+                                <select id="refinementModel">
+                                    <option value="gemini-3-pro-preview">Gemini 3 Pro</option>
+                                    <option value="claude-opus-4-5-20251101">Claude Opus 4.5</option>
+                                    <option value="gpt-5.2">ChatGPT 5.2</option>
+                                </select>
                             </div>
                             <button id="refineBtn" class="btn btn-primary" onclick="refineAnswer()">Доработать</button>
                         </div>
@@ -2702,6 +2735,7 @@
                     actionButtons.style.display = 'flex';
                     document.getElementById('refinementBlock').style.display = 'block';
                     document.getElementById('refinementInput').value = '';
+                    document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
                     saveToHistory(argumentsText, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -2745,6 +2779,7 @@
 
         async function refineAnswer() {
             const refinementInput = document.getElementById('refinementInput');
+            const refinementModelSelect = document.getElementById('refinementModel');
             const instructions = refinementInput.value.trim();
 
             if (!instructions) {
@@ -2760,6 +2795,7 @@
             const refineBtn = document.getElementById('refineBtn');
             const output = document.getElementById('output');
             const errorBox = document.getElementById('errorBox');
+            const selectedRefinementModel = refinementModelSelect.value;
 
             refineBtn.disabled = true;
             refineBtn.textContent = 'Доработка...';
@@ -2774,7 +2810,7 @@
                         original_response: lastResult,
                         refinement_instructions: instructions,
                         claim_text: lastInputData?.claim_text || '',
-                        model: lastUsedModel || selectedModel
+                        model: selectedRefinementModel
                     })
                 });
 
@@ -2868,6 +2904,7 @@
                     actionButtons.style.display = 'flex';
                     document.getElementById('refinementBlock').style.display = 'block';
                     document.getElementById('refinementInput').value = '';
+                    document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
                     saveToHistory(result.arguments_text, lastUsedModel, generationTime);
                     updateStatsAfterGeneration(lastUsedModel, parseFloat(generationTime));
                 }, 500);
@@ -3347,6 +3384,7 @@
                 document.getElementById('actionButtons').style.display = 'flex';
                 document.getElementById('refinementBlock').style.display = 'block';
                 document.getElementById('refinementInput').value = '';
+                document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
                 document.getElementById('modelBadge').textContent = '📜 ' + (MODEL_NAMES[lastUsedModel] || lastUsedModel || 'История');
                 document.getElementById('timeBadge').textContent = history[index].time ? `⏱️ ${history[index].time} сек.` : '';
                 document.getElementById('outputBadges').style.display = 'block';
@@ -3387,6 +3425,7 @@
                 document.getElementById('actionButtons').style.display = 'flex';
                 document.getElementById('refinementBlock').style.display = 'block';
                 document.getElementById('refinementInput').value = '';
+                document.getElementById('refinementModel').value = lastUsedModel || selectedModel;
                 document.getElementById('modelBadge').textContent = MODEL_NAMES[lastUsedModel] || lastUsedModel;
                 document.getElementById('outputBadges').style.display = 'block';
             }
